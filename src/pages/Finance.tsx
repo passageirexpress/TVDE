@@ -136,12 +136,14 @@ export default function Finance() {
         setPayments([...newPayments, ...payments]);
       }
 
-      alert('Sincronização com Bolt concluída com sucesso!');
+      alert(data.isMock ? 'Sincronização concluída (Modo de Demonstração).' : 'Sincronização com Bolt concluída com sucesso!');
       
       addNotification({
         id: Math.random().toString(36).substr(2, 9),
-        title: 'Sincronização Bolt Concluída',
-        message: `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos.`,
+        title: data.isMock ? 'Sincronização (Modo Demo)' : 'Sincronização Bolt Concluída',
+        message: data.isMock 
+          ? 'As credenciais da Bolt não foram configuradas. Foram carregados dados de demonstração.'
+          : `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos.`,
         date: new Date().toISOString().split('T')[0],
         read: false
       });

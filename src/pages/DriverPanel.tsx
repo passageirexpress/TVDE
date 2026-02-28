@@ -35,10 +35,10 @@ import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 const companyData = {
-  name: 'TVDE Fleet Solutions Lda',
-  nif: '512345678',
-  address: 'Avenida da Liberdade, 123, 1250-140 Lisboa, Portugal',
-  email: 'financeiro@tvdefleet.pt'
+  name: 'Sua Empresa TVDE',
+  nif: '000000000',
+  address: 'Endereço da Empresa',
+  email: 'seu-email@empresa.pt'
 };
 
 const dailyData = [

@@ -45,16 +45,6 @@ export default function Login() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">TVDE Fleet CRM</h1>
           <p className="text-gray-500 mt-2">Entre com suas credenciais para gerir sua frota.</p>
-          <div className="mt-4 flex flex-col gap-2 items-center">
-            <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 inline-block">
-              <p className="text-[10px] text-indigo-700 font-bold uppercase tracking-wider">Acesso Admin Demo</p>
-              <p className="text-xs text-indigo-600 mt-1">admin@tvdefleet.com / admin123</p>
-            </div>
-            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 inline-block">
-              <p className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Acesso Motorista Demo</p>
-              <p className="text-xs text-emerald-600 mt-1">driver@tvdefleet.com / driver123</p>
-            </div>
-          </div>
         </div>
 
         <div className="bg-white p-8 rounded-3xl shadow-xl shadow-black/5 border border-gray-100">

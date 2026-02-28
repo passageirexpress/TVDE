@@ -115,18 +115,14 @@ const initialRentals: Rental[] = [
   { id: '3', vehicle_id: '3', daily_rate: 55.00, status: 'maintenance', interested_drivers: [] },
 ];
 
-const initialUsers: User[] = [
-  { id: '1', email: 'admin@tvdefleet.com', role: 'admin', full_name: 'Administrador Geral' },
-  { id: '2', email: 'financeiro@tvdefleet.com', role: 'finance', full_name: 'Ana Financeiro' },
-  { id: '3', email: 'gestor@tvdefleet.com', role: 'manager', full_name: 'Carlos Gestor' },
-];
+const initialUsers: User[] = [];
 
 const initialSettings: CompanySettings = {
-  name: 'TVDE Fleet Solutions Lda',
-  nif: '512345678',
-  address: 'Avenida da Liberdade, 123, 1250-140 Lisboa, Portugal',
-  email: 'financeiro@tvdefleet.pt',
-  iban: 'PT50 0003 1234 5678 9012 3456 7'
+  name: 'Sua Empresa TVDE',
+  nif: '000000000',
+  address: 'Endereço da Empresa',
+  email: 'seu-email@empresa.pt',
+  iban: 'PT50 0000 0000 0000 0000 0000 0'
 };
 
 export const useDataStore = create<DataState>()(

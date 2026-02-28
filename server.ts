@@ -51,6 +51,30 @@ async function startServer() {
 
   // API to fetch all Bolt data
   app.get("/api/bolt/sync", async (req, res) => {
+    const clientId = process.env.BOLT_CLIENT_ID;
+    const clientSecret = process.env.BOLT_CLIENT_SECRET;
+
+    // If credentials are not configured, return mock data for demo purposes
+    if (!clientId || !clientSecret) {
+      console.log("Bolt credentials not configured. Returning mock data.");
+      return res.json({
+        drivers: [
+          { id: 'mock-1', name: 'João Silva (Bolt)', email: 'joao.bolt@example.com', phone: '912345678', tax_id: '123456789' },
+          { id: 'mock-2', name: 'Maria Santos (Bolt)', email: 'maria.bolt@example.com', phone: '912345679', tax_id: '987654321' }
+        ],
+        vehicles: [
+          { id: 'mock-v1', plate_number: 'AA-00-BB', make: 'Toyota', model: 'Corolla', year: 2022 },
+          { id: 'mock-v2', plate_number: 'CC-11-DD', make: 'Renault', model: 'Zoe', year: 2023 }
+        ],
+        earnings: [
+          { id: 'mock-e1', driver_name: 'João Silva (Bolt)', amount: '450.50', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
+          { id: 'mock-e2', driver_name: 'Maria Santos (Bolt)', amount: '580.20', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
+        ],
+        isMock: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     try {
       const accessToken = await getBoltToken();
       
