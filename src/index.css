@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-sidebar: #151619;
+  --color-sidebar-foreground: #8E9299;
+  --color-sidebar-accent: #FFFFFF;
+  
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-[#F5F5F5] text-[#1A1A1A] antialiased;
+  }
+}
+
+.glass-card {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
+}
+
+.data-grid-header {
+  @apply text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-3 px-4 border-b border-gray-100;
+}
+
+.data-grid-row {
+  @apply hover:bg-gray-50 transition-colors border-b border-gray-50;
+}
+
