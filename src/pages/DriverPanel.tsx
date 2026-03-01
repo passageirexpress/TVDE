@@ -17,6 +17,7 @@ import {
   Building2,
   CheckCircle2,
   Receipt,
+  AlertCircle,
   X
 } from 'lucide-react';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
@@ -28,7 +29,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Legend
+  Legend,
+  Cell
 } from 'recharts';
 
 import { useDataStore } from '../store/useDataStore';
@@ -74,6 +76,22 @@ export default function DriverPanel() {
   
   const myExpenses = expenses.filter(e => e.driver_id === user?.id && e.status === 'approved');
   const myVehicle = vehicles.find(v => v.current_driver_id === user?.id);
+  const myDriverData = drivers.find(d => d.id === user?.id);
+
+  const expiringDocs = [
+    ...(myVehicle ? [
+      { name: 'Seguro (Viatura)', date: myVehicle.insurance_expiry },
+      { name: 'Inspeção (Viatura)', date: myVehicle.inspection_expiry }
+    ] : []),
+    ...(myDriverData ? myDriverData.documents.map(doc => ({ name: doc.type, date: doc.expiry_date })) : [])
+  ].filter(doc => {
+    if (!doc.date) return false;
+    const expiry = new Date(doc.date);
+    const today = new Date();
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30;
+  });
 
   const [vehicleData, setVehicleData] = useState({
     brand: myVehicle?.brand || 'Toyota',
@@ -154,6 +172,30 @@ export default function DriverPanel() {
             <button onClick={() => setShowNotification(false)} className="ml-4 text-white/60 hover:text-white">
               <ChevronRight className="w-5 h-5 rotate-90" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {expiringDocs.length > 0 && (
+        <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex flex-col sm:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="p-4 bg-red-100 text-red-600 rounded-2xl animate-pulse">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-red-900">Atenção: Documentos Próximos do Vencimento</h3>
+              <p className="text-sm text-red-700 mt-1">
+                Você tem {expiringDocs.length} documento(s) que vencem em menos de 30 dias. Por favor, atualize-os para evitar bloqueios.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {expiringDocs.map((doc, idx) => (
+              <div key={idx} className="bg-white px-4 py-2 rounded-xl border border-red-100 shadow-sm flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-700 capitalize">{doc.name}:</span>
+                <span className="text-xs font-black text-red-600">{doc.date}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -411,29 +453,43 @@ export default function DriverPanel() {
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-lg font-bold">Desempenho Individual</h3>
-                <p className="text-xs text-gray-400 mt-1">Taxas de aceitação e cancelamento</p>
+                <h3 className="text-lg font-bold">Taxas de Desempenho</h3>
+                <p className="text-xs text-gray-400 mt-1">Aceitação vs Cancelamento</p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-bold">4.8</span>
-                  <span className="text-amber-400 text-xs">★</span>
-                  <span className="text-[10px] text-gray-400 uppercase font-bold ml-1">Rating Médio</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Aceitação</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">Cancelamento</span>
                 </div>
               </div>
             </div>
-            <div className="h-[200px]">
+            <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={performanceData} layout="vertical" margin={{ left: 20, right: 40 }}>
-                  <XAxis type="number" hide domain={[0, 100]} />
-                  <YAxis type="category" dataKey="name" hide />
+                <BarChart data={[
+                  { name: 'Aceitação', value: myDriverData?.acceptance_rate || 0, fill: '#10b981' },
+                  { name: 'Cancelamento', value: myDriverData?.cancellation_rate || 0, fill: '#ef4444' }
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af', fontWeight: 600}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} domain={[0, 100]} />
                   <Tooltip 
-                    cursor={{fill: 'transparent'}}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    cursor={{fill: '#f9fafb'}}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Legend verticalAlign="top" align="right" iconType="circle" />
-                  <Bar dataKey="aceitacao" name="Aceitação (%)" fill="#10b981" radius={[0, 4, 4, 0]} barSize={32} />
-                  <Bar dataKey="cancelamento" name="Cancelamento (%)" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={32} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={60}>
+                    {
+                      [
+                        { name: 'Aceitação', value: myDriverData?.acceptance_rate || 0, fill: '#10b981' },
+                        { name: 'Cancelamento', value: myDriverData?.cancellation_rate || 0, fill: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))
+                    }
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>

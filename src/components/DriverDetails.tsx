@@ -26,11 +26,31 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
   const [isEditing, setIsEditing] = useState(false);
   const [editedDriver, setEditedDriver] = useState<Driver>(driver);
   const [documents, setDocuments] = useState(driver.documents.length > 0 ? driver.documents : [
-    { id: '1', type: 'license', label: 'Carta de Condução', expiry: '2028-10-12', status: 'pending' },
-    { id: '2', type: 'tvde_cert', label: 'Certificado TVDE', expiry: '2025-05-20', status: 'pending' },
-    { id: '3', type: 'id_card', label: 'Cartão de Cidadão', expiry: '2029-01-15', status: 'pending' },
-    { id: '4', type: 'address_proof', label: 'Comprovativo Morada', expiry: '2024-12-30', status: 'pending' }
+    { id: '1', driver_id: driver.id, type: 'license', label: 'Carta de Condução', expiry_date: '2028-10-12', status: 'pending', url: '#' },
+    { id: '2', driver_id: driver.id, type: 'tvde_cert', label: 'Certificado TVDE', expiry_date: '2025-05-20', status: 'pending', url: '#' },
+    { id: '3', driver_id: driver.id, type: 'id_card', label: 'Cartão de Cidadão', expiry_date: '2029-01-15', status: 'pending', url: '#' },
+    { id: '4', driver_id: driver.id, type: 'address_proof', label: 'Comprovativo Morada', expiry_date: '2024-12-30', status: 'pending', url: '#' }
   ]);
+
+  React.useEffect(() => {
+    const today = new Date();
+    const updatedDocs = documents.map(doc => {
+      if (doc.expiry_date) {
+        const expiryDate = new Date(doc.expiry_date);
+        if (expiryDate < today && doc.status !== 'expired') {
+          return { ...doc, status: 'expired' as const };
+        } else if (expiryDate >= today && doc.status === 'expired') {
+          return { ...doc, status: 'valid' as const };
+        }
+      }
+      return doc;
+    });
+
+    const hasChanges = JSON.stringify(updatedDocs) !== JSON.stringify(documents);
+    if (hasChanges) {
+      setDocuments(updatedDocs);
+    }
+  }, [documents]);
 
   const handleValidateDoc = (docId: string, newStatus: 'valid' | 'rejected') => {
     setDocuments(prev => prev.map(doc => 
@@ -55,6 +75,8 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
         return <span className="text-[10px] text-amber-600 font-bold uppercase tracking-tighter">Pendente</span>;
       case 'expired':
         return <span className="text-[10px] text-red-600 font-bold uppercase tracking-tighter">Expirado</span>;
+      case 'rejected':
+        return <span className="text-[10px] text-red-600 font-bold uppercase tracking-tighter">Rejeitado</span>;
       default:
         return null;
     }
@@ -196,6 +218,43 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
                       </p>
                     )}
                   </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 font-medium">Uber UUID</p>
+                    {isEditing ? (
+                      <input 
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
+                        value={editedDriver.uber_uuid || ''}
+                        onChange={e => setEditedDriver({...editedDriver, uber_uuid: e.target.value})}
+                      />
+                    ) : (
+                      <p className="text-sm font-bold">{driver.uber_uuid || 'N/A'}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 font-medium">Bolt ID</p>
+                    {isEditing ? (
+                      <input 
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
+                        value={editedDriver.bolt_id || ''}
+                        onChange={e => setEditedDriver({...editedDriver, bolt_id: e.target.value})}
+                      />
+                    ) : (
+                      <p className="text-sm font-bold">{driver.bolt_id || 'N/A'}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 font-medium">Senha do Painel</p>
+                    {isEditing ? (
+                      <input 
+                        type="password"
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
+                        value={editedDriver.password || ''}
+                        onChange={e => setEditedDriver({...editedDriver, password: e.target.value})}
+                      />
+                    ) : (
+                      <p className="text-sm font-bold">••••••••</p>
+                    )}
+                  </div>
                 </div>
               </section>
 
@@ -230,7 +289,7 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
                       <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                         <div className="flex items-center gap-1 text-[10px] text-gray-400">
                           <Clock className="w-3 h-3" />
-                          <span>Expira em: {doc.expiry}</span>
+                          <span>Expira em: {doc.expiry_date}</span>
                         </div>
                         <div className="flex gap-1">
                           <button 

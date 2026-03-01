@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { Bell, User, Search, Menu, X, CheckCircle2, Clock } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 export default function Layout() {
@@ -12,7 +12,7 @@ export default function Layout() {
   const { notifications, markNotificationsAsRead } = useDataStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showAllNotifications, setShowAllNotifications] = useState(false);
+  const navigate = useNavigate();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -45,7 +45,6 @@ export default function Layout() {
               <button 
                 onClick={() => {
                   setShowNotifications(!showNotifications);
-                  if (!showNotifications) markNotificationsAsRead();
                 }}
                 className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -64,8 +63,8 @@ export default function Layout() {
                     </button>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map(n => (
+                    {notifications.slice(0, 5).length > 0 ? (
+                      notifications.slice(0, 5).map(n => (
                         <div key={n.id} className={cn(
                           "p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-default",
                           !n.read && "bg-blue-50/30"
@@ -79,7 +78,7 @@ export default function Layout() {
                             </div>
                             <div>
                               <p className="text-xs font-bold text-gray-900">{n.title}</p>
-                              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{n.message}</p>
+                              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed truncate w-48">{n.message}</p>
                               <p className="text-[9px] text-gray-400 mt-2 font-medium">{n.date}</p>
                             </div>
                           </div>
@@ -95,7 +94,7 @@ export default function Layout() {
                     <button 
                       onClick={() => {
                         setShowNotifications(false);
-                        setShowAllNotifications(true);
+                        navigate('/notifications');
                       }}
                       className="text-[10px] font-bold text-sidebar uppercase tracking-widest hover:underline"
                     >
@@ -124,54 +123,6 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
-      {showAllNotifications && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">Todas as Notificações</h2>
-                <p className="text-sm text-gray-500 mt-1">Histórico completo de alertas e mensagens.</p>
-              </div>
-              <button onClick={() => setShowAllNotifications(false)} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-50 rounded-full transition-all">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-4">
-              {notifications.length > 0 ? (
-                notifications.map(n => (
-                  <div key={n.id} className="p-6 bg-gray-50 rounded-2xl border border-gray-100 flex gap-4">
-                    <div className={cn(
-                      "p-3 rounded-xl h-fit",
-                      n.title.includes('Pagamento') ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"
-                    )}>
-                      {n.title.includes('Pagamento') ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-bold text-gray-900">{n.title}</h4>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">{n.date}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">{n.message}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="py-12 text-center">
-                  <p className="text-gray-400 italic">Nenhuma notificação encontrada.</p>
-                </div>
-              )}
-            </div>
-            <div className="p-8 bg-gray-50 flex justify-end">
-              <button 
-                onClick={() => setShowAllNotifications(false)}
-                className="px-8 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-xl shadow-sidebar/20"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

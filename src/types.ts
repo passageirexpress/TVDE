@@ -16,6 +16,9 @@ export interface Driver {
   documents: DriverDocument[];
   commission_type: 'fixed' | 'variable';
   commission_value: number;
+  uber_uuid?: string;
+  bolt_id?: string;
+  password?: string;
 }
 
 export interface DriverDocument {
@@ -24,7 +27,7 @@ export interface DriverDocument {
   type: 'license' | 'tvde_cert' | 'id_card' | 'address_proof';
   url: string;
   expiry_date?: string;
-  status: 'valid' | 'expired' | 'pending';
+  status: 'valid' | 'expired' | 'pending' | 'rejected';
 }
 
 export interface Vehicle {
@@ -89,6 +92,8 @@ export interface User {
   email: string;
   role: 'admin' | 'manager' | 'finance' | 'driver';
   full_name: string;
+  password?: string;
+  permissions?: string[];
 }
 
 export interface Expense {
@@ -108,6 +113,7 @@ export interface Rental {
   vehicle_id: string;
   driver_id?: string;
   daily_rate: number;
+  security_deposit?: number;
   status: 'available' | 'rented' | 'maintenance';
   interested_drivers?: string[];
   start_date?: string;
@@ -120,6 +126,8 @@ export interface CompanySettings {
   address: string;
   email: string;
   iban: string;
+  bolt_client_id?: string;
+  bolt_client_secret?: string;
 }
 
 export interface AppNotification {

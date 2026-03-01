@@ -70,6 +70,7 @@ const initialVehicles: Vehicle[] = [
     insurance_expiry: '2024-12-31', 
     inspection_expiry: '2024-12-31', 
     policy_number: '123',
+    current_driver_id: '1',
     documents: [] 
   },
   { 
@@ -84,6 +85,7 @@ const initialVehicles: Vehicle[] = [
     insurance_expiry: '2024-03-15', 
     inspection_expiry: '2024-03-20', 
     policy_number: '124',
+    current_driver_id: '2',
     documents: [] 
   },
   { 
@@ -115,14 +117,25 @@ const initialRentals: Rental[] = [
   { id: '3', vehicle_id: '3', daily_rate: 55.00, status: 'maintenance', interested_drivers: [] },
 ];
 
-const initialUsers: User[] = [];
+const initialUsers: User[] = [
+  {
+    id: '1',
+    full_name: 'Admin Fleet',
+    email: 'admin@tvdefleet.com',
+    role: 'admin',
+    password: 'admin',
+    permissions: ['all']
+  }
+];
 
 const initialSettings: CompanySettings = {
   name: 'Sua Empresa TVDE',
   nif: '000000000',
   address: 'Endereço da Empresa',
   email: 'seu-email@empresa.pt',
-  iban: 'PT50 0000 0000 0000 0000 0000 0'
+  iban: 'PT50 0000 0000 0000 0000 0000 0',
+  bolt_client_id: '',
+  bolt_client_secret: ''
 };
 
 export const useDataStore = create<DataState>()(

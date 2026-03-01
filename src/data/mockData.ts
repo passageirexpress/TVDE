@@ -16,5 +16,8 @@ export const driversData: Driver[] = Array.from({ length: 45 }, (_, i) => ({
   entry_date: '2023-10-12',
   documents: [],
   commission_type: i % 4 === 0 ? 'fixed' : 'variable',
-  commission_value: i % 4 === 0 ? 500 : 25
+  commission_value: i % 4 === 0 ? 500 : 25,
+  uber_uuid: `uber-uuid-${i + 1}`,
+  bolt_id: `bolt-id-${i + 1}`,
+  password: 'password123'
 }));

@@ -156,11 +156,10 @@ export default function Finance() {
     }
   };
 
-  const calculateNet = (driverName: string, gross: number) => {
-    const driver = drivers.find(d => d.full_name.toLowerCase() === driverName.toLowerCase());
-    if (!driver) return gross * 0.75; // Default 25% commission if driver not found
+  const calculateNet = (driverId: string, gross: number) => {
+    const driver = drivers.find(d => d.id === driverId);
+    if (!driver) return gross * 0.75; 
 
-    // Find all approved expenses for this driver
     const driverExpenses = expenses.filter(e => e.driver_id === driver.id && e.status === 'approved');
     
     const tolls = driverExpenses.filter(e => e.category === 'portagem').reduce((acc, e) => acc + e.amount, 0);
@@ -231,15 +230,24 @@ export default function Finance() {
           }
 
           if (driverName && (gross > 0 || net !== 0)) {
-            const driverExists = drivers.some(d => d.full_name.toLowerCase() === driverName.toLowerCase());
-            if (!driverExists && !unknownDrivers.includes(driverName)) {
+            // Find driver by multiple criteria
+            const driver = drivers.find(d => {
+              const matchesName = d.full_name.toLowerCase() === driverName.toLowerCase();
+              const matchesEmail = row['Email'] === d.email || row['E-mail'] === d.email;
+              const matchesUberUUID = importType === 'uber' && (row['Driver UUID'] === d.uber_uuid || row['UUID'] === d.uber_uuid);
+              const matchesBoltID = importType === 'bolt' && (row['Driver ID'] === d.bolt_id || row['ID'] === d.bolt_id);
+              return matchesName || matchesEmail || matchesUberUUID || matchesBoltID;
+            });
+
+            if (!driver && !unknownDrivers.includes(driverName)) {
               unknownDrivers.push(driverName);
             }
 
-            const calculatedNet = calculateNet(driverName, gross || net);
+            const calculatedNet = calculateNet(driver?.id || '', gross || net);
             newPayments.push({
               id: `import-${importType}-${Date.now()}-${index}`,
-              driver: driverName,
+              driver: driver?.full_name || driverName,
+              driver_id: driver?.id,
               period: getUberPeriod(),
               gross: gross || net,
               net: calculatedNet,
@@ -296,8 +304,13 @@ export default function Finance() {
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    updatePayment(id, { status: newStatus });
+  const handleStatusChange = (id: string, newStatus: string, paymentDate?: string) => {
+    const updateData: any = { status: newStatus };
+    if (newStatus === 'paid') {
+      updateData.date = paymentDate || new Date().toISOString().split('T')[0];
+    }
+    
+    updatePayment(id, updateData);
     addNotification({
       id: Math.random().toString(36).substr(2, 9),
       title: 'Status de Pagamento Atualizado',
@@ -575,7 +588,17 @@ export default function Finance() {
                     <td className="px-4 py-4 text-sm text-red-500">-{formatCurrency(p.gross - p.net)}</td>
                     <td className="px-4 py-4 text-sm font-bold text-emerald-600">{formatCurrency(p.net)}</td>
                     <td className="px-4 py-4">
-                      {getStatusBadge(p.status)}
+                      <div className="flex flex-col gap-1">
+                        {getStatusBadge(p.status)}
+                        {p.status === 'paid' && (
+                          <input 
+                            type="date" 
+                            className="text-[10px] border-none bg-transparent text-gray-400 focus:ring-0 p-0 h-auto w-24"
+                            value={p.date || ''}
+                            onChange={(e) => handleStatusChange(p.id, 'paid', e.target.value)}
+                          />
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">

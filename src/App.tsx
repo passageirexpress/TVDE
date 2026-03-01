@@ -18,8 +18,11 @@ import Profile from './pages/Profile';
 import Expenses from './pages/Expenses';
 import Rentals from './pages/Rentals';
 import Settings from './pages/Settings';
+import Notifications from './pages/Notifications';
 import Login from './pages/Login';
 import { useAuthStore } from './store/useAuthStore';
+import { useDataStore } from './store/useDataStore';
+import { checkDocumentExpirations, checkRentalExpirations } from './services/notificationService';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const user = useAuthStore(state => state.user);
@@ -55,13 +58,17 @@ const HomeRedirect = () => {
 export default function App() {
   const setUser = useAuthStore(state => state.setUser);
   const setLoading = useAuthStore(state => state.setLoading);
+  const { drivers, vehicles, rentals, addNotification, notifications } = useDataStore();
 
   useEffect(() => {
     // Simulate checking session
     setTimeout(() => {
       setLoading(false);
+      // Check for document expirations
+      checkDocumentExpirations(drivers, vehicles, addNotification, notifications);
+      checkRentalExpirations(rentals, vehicles, drivers, addNotification, notifications);
     }, 500);
-  }, []);
+  }, [drivers, vehicles, rentals, addNotification, notifications]);
 
   return (
     <BrowserRouter>
@@ -107,6 +114,7 @@ export default function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="rentals" element={<Rentals />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Settings />

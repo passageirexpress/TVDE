@@ -80,6 +80,8 @@ export default function Expenses() {
   const [showModal, setShowModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState({ start: '', end: '' });
   const [formData, setFormData] = useState<Partial<Expense>>({
     category: 'combustivel',
     status: 'pending',
@@ -91,10 +93,20 @@ export default function Expenses() {
 
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase());
-    if (user?.role === 'driver') {
-      return matchesSearch && expense.driver_id === user.id;
+    const matchesCategory = filterCategory === 'all' || expense.category === filterCategory;
+    
+    let matchesDate = true;
+    if (filterDate.start) {
+      matchesDate = matchesDate && new Date(expense.date) >= new Date(filterDate.start);
     }
-    return matchesSearch;
+    if (filterDate.end) {
+      matchesDate = matchesDate && new Date(expense.date) <= new Date(filterDate.end);
+    }
+
+    if (user?.role === 'driver') {
+      return matchesSearch && matchesCategory && matchesDate && expense.driver_id === user.id;
+    }
+    return matchesSearch && matchesCategory && matchesDate;
   });
 
   const handleOpenModal = (expense?: Expense) => {
@@ -252,33 +264,71 @@ export default function Expenses() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h3 className="font-bold">Histórico de Despesas</h3>
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-            <div className="relative flex-1 sm:w-64">
+        <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h3 className="font-bold">Histórico de Despesas</h3>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleExportCSV}
+                className="p-2 text-gray-400 hover:text-sidebar transition-colors"
+                title="Exportar CSV"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input 
                 type="text" 
-                placeholder="Procurar despesa..."
+                placeholder="Procurar descrição..."
                 className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs outline-none focus:ring-2 focus:ring-sidebar/10 w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex gap-2 justify-end">
-              <button 
-                onClick={() => alert('Filtros avançados de despesas...')}
-                className="p-2 text-gray-400 hover:text-sidebar transition-colors"
-              >
-                <Filter className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={handleExportCSV}
-                className="p-2 text-gray-400 hover:text-sidebar transition-colors"
-              >
-                <Download className="w-5 h-5" />
-              </button>
+            
+            <select 
+              className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs outline-none focus:ring-2 focus:ring-sidebar/10"
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+            >
+              <option value="all">Todas as Categorias</option>
+              <option value="combustivel">Combustível</option>
+              <option value="portagem">Portagem</option>
+              <option value="iva">IVA</option>
+              <option value="aluguel">Aluguel</option>
+              <option value="outros">Outros</option>
+            </select>
+
+            <div className="flex items-center gap-2">
+              <input 
+                type="date" 
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] outline-none focus:ring-2 focus:ring-sidebar/10"
+                value={filterDate.start}
+                onChange={(e) => setFilterDate({...filterDate, start: e.target.value})}
+              />
+              <span className="text-gray-400 text-[10px]">até</span>
+              <input 
+                type="date" 
+                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] outline-none focus:ring-2 focus:ring-sidebar/10"
+                value={filterDate.end}
+                onChange={(e) => setFilterDate({...filterDate, end: e.target.value})}
+              />
             </div>
+
+            <button 
+              onClick={() => {
+                setSearchTerm('');
+                setFilterCategory('all');
+                setFilterDate({ start: '', end: '' });
+              }}
+              className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold hover:bg-gray-200 transition-all"
+            >
+              Limpar Filtros
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">

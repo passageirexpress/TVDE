@@ -12,7 +12,9 @@ export default function Users() {
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
-    role: 'manager' as User['role']
+    role: 'manager' as User['role'],
+    password: '',
+    permissions: [] as string[]
   });
 
   const handleOpenModal = (user?: User) => {
@@ -21,14 +23,18 @@ export default function Users() {
       setFormData({
         full_name: user.full_name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        password: user.password || '',
+        permissions: user.permissions || []
       });
     } else {
       setEditingUser(null);
       setFormData({
         full_name: '',
         email: '',
-        role: 'manager'
+        role: 'manager',
+        password: '',
+        permissions: []
       });
     }
     setShowModal(true);
@@ -186,6 +192,37 @@ export default function Users() {
                   <option value="finance">Financeiro</option>
                   <option value="manager">Gestor</option>
                 </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-400 uppercase">Senha</label>
+                <input 
+                  type="password" 
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase">Permissões Específicas</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['financeiro', 'frota', 'motoristas', 'relatorios', 'configuracoes'].map(perm => (
+                    <label key={perm} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="rounded text-sidebar focus:ring-sidebar/10"
+                        checked={formData.permissions.includes(perm)}
+                        onChange={(e) => {
+                          const newPerms = e.target.checked 
+                            ? [...formData.permissions, perm]
+                            : formData.permissions.filter(p => p !== perm);
+                          setFormData({...formData, permissions: newPerms});
+                        }}
+                      />
+                      <span className="text-xs capitalize">{perm}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="p-8 bg-gray-50 flex gap-4">

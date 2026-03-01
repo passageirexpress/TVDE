@@ -14,7 +14,7 @@ export default function Vehicles() {
     brand: '',
     model: '',
     plate: '',
-    driver: 'Ninguém',
+    current_driver_id: '',
     insurance: '',
     inspection: '',
     status: 'active'
@@ -27,7 +27,7 @@ export default function Vehicles() {
         brand: vehicle.brand,
         model: vehicle.model,
         plate: vehicle.plate,
-        driver: vehicle.driver || 'Ninguém',
+        current_driver_id: vehicle.current_driver_id || '',
         insurance: vehicle.insurance || vehicle.insurance_expiry,
         inspection: vehicle.inspection || vehicle.inspection_expiry,
         status: vehicle.status
@@ -38,7 +38,7 @@ export default function Vehicles() {
         brand: '',
         model: '',
         plate: '',
-        driver: 'Ninguém',
+        current_driver_id: '',
         insurance: '',
         inspection: '',
         status: 'active'
@@ -184,8 +184,10 @@ export default function Vehicles() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Motorista</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{v.driver}</span>
-                      {v.driver !== 'Ninguém' && (
+                      <span className="font-medium">
+                        {useDataStore.getState().drivers.find(d => d.id === v.current_driver_id)?.full_name || 'Ninguém'}
+                      </span>
+                      {v.current_driver_id && (
                         <Link 
                           to="/drivers" 
                           className="p-1 bg-gray-50 text-gray-400 hover:text-sidebar rounded-md transition-colors"
@@ -348,14 +350,13 @@ export default function Vehicles() {
                 <label className="text-xs font-bold text-gray-400 uppercase">Motorista Associado</label>
                 <select 
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                  value={formData.driver}
-                  onChange={(e) => setFormData({...formData, driver: e.target.value})}
+                  value={formData.current_driver_id}
+                  onChange={(e) => setFormData({...formData, current_driver_id: e.target.value})}
                 >
-                  <option value="Ninguém">Ninguém</option>
-                  <option value="João Silva">João Silva</option>
-                  <option value="Maria Santos">Maria Santos</option>
-                  <option value="Ana Oliveira">Ana Oliveira</option>
-                  <option value="Pedro Costa">Pedro Costa</option>
+                  <option value="">Ninguém</option>
+                  {useDataStore.getState().drivers.map(d => (
+                    <option key={d.id} value={d.id}>{d.full_name}</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">

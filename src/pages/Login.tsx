@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Lock, Mail, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useDataStore } from '../store/useDataStore';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { user, setUser } = useAuthStore();
+  const { users, drivers } = useDataStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,23 +19,35 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate login for demo purposes
-    if (email === 'driver@tvdefleet.com') {
+    
+    // Check in Users (Admins/Managers)
+    const foundUser = users.find(u => u.email === email && u.password === password);
+    
+    if (foundUser) {
       setUser({
-        id: 'driver-1',
-        email: email,
-        role: 'driver',
-        full_name: 'João Motorista'
+        id: foundUser.id,
+        email: foundUser.email,
+        role: foundUser.role,
+        full_name: foundUser.full_name
       });
-    } else {
-      setUser({
-        id: '1',
-        email: email,
-        role: 'admin',
-        full_name: 'Admin Fleet'
-      });
+      navigate('/');
+      return;
     }
-    navigate('/');
+
+    // Check in Drivers
+    const foundDriver = drivers.find(d => d.email === email && d.password === password);
+    if (foundDriver) {
+      setUser({
+        id: foundDriver.id,
+        email: foundDriver.email,
+        role: 'driver',
+        full_name: foundDriver.full_name
+      });
+      navigate('/');
+      return;
+    }
+
+    alert('Credenciais inválidas. Por favor, tente novamente.');
   };
 
   return (
@@ -86,7 +100,7 @@ export default function Login() {
               type="submit"
               className="w-full bg-sidebar text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20 group"
             >
-              Entrar no Sistema
+              Entrar
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </form>

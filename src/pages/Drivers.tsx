@@ -43,7 +43,10 @@ export default function Drivers() {
       category: 'Economy',
       documents: [],
       commission_type: newDriver.commission_type as any,
-      commission_value: newDriver.commission_value || 0
+      commission_value: newDriver.commission_value || 0,
+      uber_uuid: newDriver.uber_uuid || '',
+      bolt_id: newDriver.bolt_id || '',
+      password: newDriver.password || '123456'
     };
     addDriver(driver);
     setShowAddModal(false);
@@ -287,14 +290,35 @@ export default function Drivers() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">
-                    {newDriver.commission_type === 'variable' ? 'Valor da Comissão (%)' : 'Valor da Comissão (EUR)'}
-                  </label>
+                  <label className="text-sm font-bold text-gray-700">Valor da Comissão (EUR)</label>
                   <input 
                     required type="number"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
                     value={newDriver.commission_value}
                     onChange={e => setNewDriver({...newDriver, commission_value: Number(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">Uber UUID</label>
+                  <input 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    onChange={e => setNewDriver({...newDriver, uber_uuid: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">Bolt ID</label>
+                  <input 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    onChange={e => setNewDriver({...newDriver, bolt_id: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">Senha do Painel</label>
+                  <input 
+                    required type="password"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    onChange={e => setNewDriver({...newDriver, password: e.target.value})}
+                    placeholder="Senha para o motorista acessar o painel"
                   />
                 </div>
               </div>

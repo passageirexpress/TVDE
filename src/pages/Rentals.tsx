@@ -28,6 +28,7 @@ export default function Rentals() {
   const [formData, setFormData] = useState<Partial<Rental>>({
     status: 'available',
     daily_rate: 35.00,
+    security_deposit: 500.00,
     vehicle_id: ''
   });
 
@@ -37,6 +38,7 @@ export default function Rentals() {
       setFormData({
         vehicle_id: rental.vehicle_id,
         daily_rate: rental.daily_rate,
+        security_deposit: rental.security_deposit || 500.00,
         status: rental.status
       });
     } else {
@@ -44,6 +46,7 @@ export default function Rentals() {
       setFormData({
         status: 'available',
         daily_rate: 35.00,
+        security_deposit: 500.00,
         vehicle_id: ''
       });
     }
@@ -65,6 +68,7 @@ export default function Rentals() {
         id: Math.random().toString(36).substr(2, 9),
         vehicle_id: formData.vehicle_id || '',
         daily_rate: Number(formData.daily_rate),
+        security_deposit: Number(formData.security_deposit),
         status: 'available'
       };
       addRental(rental);
@@ -163,8 +167,8 @@ export default function Rentals() {
 
                 <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-50">
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Categoria</p>
-                    <p className="text-sm font-bold mt-1">{vehicle.category}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Caução</p>
+                    <p className="text-sm font-bold mt-1">{formatCurrency(rental.security_deposit || 0)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Semanal</p>
@@ -239,6 +243,15 @@ export default function Rentals() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
                   value={formData.daily_rate}
                   onChange={e => setFormData({...formData, daily_rate: Number(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-500 uppercase">Depósito de Segurança (Caução)</label>
+                <input 
+                  type="number" step="0.01" required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={formData.security_deposit}
+                  onChange={e => setFormData({...formData, security_deposit: Number(e.target.value)})}
                 />
               </div>
               {editingRental && (

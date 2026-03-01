@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Save, Mail, MapPin, CreditCard, Hash } from 'lucide-react';
+import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap } from 'lucide-react';
 import { CompanySettings } from '../types';
 import { useDataStore } from '../store/useDataStore';
 
@@ -98,6 +98,45 @@ export default function Settings() {
                 onChange={e => setSettings({...settings, iban: e.target.value})}
                 required
               />
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-gray-100">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                <Zap className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Integração Bolt API</h3>
+                <p className="text-sm text-gray-400">Configure as credenciais para sincronização automática de ganhos e frotas.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  <Hash className="w-3 h-3" /> Bolt Client ID
+                </label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.bolt_client_id || ''}
+                  onChange={e => setSettings({...settings, bolt_client_id: e.target.value})}
+                  placeholder="Insira o Client ID da Bolt"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  <Hash className="w-3 h-3" /> Bolt Client Secret
+                </label>
+                <input 
+                  type="password" 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.bolt_client_secret || ''}
+                  onChange={e => setSettings({...settings, bolt_client_secret: e.target.value})}
+                  placeholder="••••••••••••••••"
+                />
+              </div>
             </div>
           </div>
 
