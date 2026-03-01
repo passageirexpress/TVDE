@@ -128,6 +128,8 @@ export interface CompanySettings {
   iban: string;
   bolt_client_id?: string;
   bolt_client_secret?: string;
+  uber_client_id?: string;
+  uber_client_secret?: string;
 }
 
 export interface AppNotification {
