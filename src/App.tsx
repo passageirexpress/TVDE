@@ -61,7 +61,7 @@ export default function App() {
   const { drivers, vehicles, rentals, addNotification, notifications } = useDataStore();
 
   useEffect(() => {
-    // Simulate checking session
+    // No changes needed here, just checking
     setTimeout(() => {
       setLoading(false);
       // Check for document expirations

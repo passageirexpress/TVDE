@@ -33,6 +33,21 @@ export const checkRentalExpirations = (
             read: false
           });
         }
+      } else if (diffDays <= 0) {
+        const vehicle = vehicles.find(v => v.id === rental.vehicle_id);
+        const driver = drivers.find(d => d.id === rental.driver_id);
+        const title = `Contrato Expirado: ${vehicle?.plate}`;
+        const message = `O contrato de aluguel do veículo ${vehicle?.plate} com o motorista ${driver?.full_name} EXPIROU em ${rental.end_date}.`;
+
+        if (!isAlreadyNotified(title, message)) {
+          addNotification({
+            id: `rental-expired-${rental.id}-${Date.now()}`,
+            title,
+            message,
+            date: today.toISOString().split('T')[0],
+            read: false
+          });
+        }
       }
     }
   });

@@ -135,7 +135,9 @@ const initialSettings: CompanySettings = {
   email: 'seu-email@empresa.pt',
   iban: 'PT50 0000 0000 0000 0000 0000 0',
   bolt_client_id: '',
-  bolt_client_secret: ''
+  bolt_client_secret: '',
+  uber_client_id: '',
+  uber_client_secret: ''
 };
 
 export const useDataStore = create<DataState>()(

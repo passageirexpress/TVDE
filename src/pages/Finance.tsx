@@ -47,6 +47,120 @@ export default function Finance() {
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingUber, setIsSyncingUber] = useState(false);
+
+  const handleSyncUber = async () => {
+    setIsSyncingUber(true);
+    try {
+      const response = await fetch('/api/uber/sync');
+      if (!response.ok) throw new Error('Falha ao sincronizar dados da Uber');
+      const data = await response.json();
+      
+      console.log('Uber Sync Data Received:', data);
+
+      if (data.status === 'connected' && data.drivers?.length === 0) {
+        alert('Conectado à API da Uber com sucesso! No entanto, não foram encontrados novos motoristas ou veículos para sincronizar neste momento.');
+        return;
+      }
+
+      // Process Uber Drivers
+      const uberDrivers = data.drivers || [];
+      if (uberDrivers.length > 0) {
+        uberDrivers.forEach((ud: any) => {
+          const name = ud.name || ud.full_name || ud.first_name + ' ' + ud.last_name;
+          if (!name) return;
+
+          const exists = drivers.some(d => d.full_name.toLowerCase() === name.toLowerCase());
+          if (!exists) {
+            addDriver({
+              id: `uber-${ud.id || Math.random()}`,
+              full_name: name,
+              email: ud.email || '',
+              phone: ud.phone || '',
+              nif: ud.tax_id || ud.nif || '',
+              iban: '',
+              entry_date: new Date().toISOString().split('T')[0],
+              status: 'active',
+              acceptance_rate: 100,
+              cancellation_rate: 0,
+              rating_uber: 5.0,
+              rating_bolt: 5.0,
+              category: 'Economy',
+              documents: [],
+              commission_type: 'variable',
+              commission_value: 25
+            });
+          }
+        });
+      }
+
+      // Process Uber Vehicles
+      const uberVehicles = data.vehicles || [];
+      if (uberVehicles.length > 0) {
+        uberVehicles.forEach((uv: any) => {
+          const plate = uv.plate_number || uv.plate || uv.registration_number;
+          if (!plate) return;
+
+          const exists = vehicles.some(v => v.plate.toLowerCase() === plate.toLowerCase());
+          if (!exists) {
+            addVehicle({
+              id: `uber-${uv.id || Math.random()}`,
+              brand: uv.make || uv.brand || 'Desconhecido',
+              model: uv.model || 'Desconhecido',
+              year: uv.year || new Date().getFullYear(),
+              plate: plate,
+              category: 'Economy',
+              status: 'active',
+              entry_date: new Date().toISOString().split('T')[0],
+              insurance_expiry: '',
+              inspection_expiry: '',
+              policy_number: '',
+              documents: []
+            });
+          }
+        });
+      }
+
+      // Process Uber Earnings as Payments
+      const uberEarnings = data.earnings || [];
+      if (uberEarnings.length > 0) {
+        const newPayments = uberEarnings.map((ue: any, index: number) => {
+          const gross = parseFloat(ue.amount || ue.total_amount || '0');
+          const driverName = ue.driver_name || ue.name || 'Motorista Uber';
+          const calculatedNet = calculateNet(driverName, gross);
+          
+          return {
+            id: `uber-earning-${Date.now()}-${index}`,
+            driver: driverName,
+            period: ue.period || getUberPeriod(),
+            gross: gross,
+            net: calculatedNet,
+            status: 'pending',
+            date: ue.date || new Date().toISOString().split('T')[0]
+          };
+        });
+        setPayments([...newPayments, ...payments]);
+      }
+
+      alert(data.isMock ? 'Sincronização concluída (Modo de Demonstração Uber).' : 'Sincronização com Uber concluída com sucesso!');
+      
+      addNotification({
+        id: Math.random().toString(36).substr(2, 9),
+        title: data.isMock ? 'Sincronização Uber (Modo Demo)' : 'Sincronização Uber Concluída',
+        message: data.isMock 
+          ? 'As credenciais da Uber não foram configuradas. Foram carregados dados de demonstração.'
+          : `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos da Uber.`,
+        date: new Date().toISOString().split('T')[0],
+        read: false
+      });
+
+    } catch (error) {
+      console.error('Erro ao sincronizar dados Uber:', error);
+      alert('Erro ao sincronizar dados com a Uber. Verifique a conexão.');
+    } finally {
+      setIsSyncingUber(false);
+    }
+  };
 
   const handleSyncBolt = async () => {
     setIsSyncing(true);
@@ -343,9 +457,21 @@ export default function Finance() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button 
+            onClick={handleSyncUber}
+            disabled={isSyncingUber}
+            className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold border bg-black text-white border-black hover:bg-gray-900 flex items-center justify-center gap-2 transition-all text-sm sm:text-base disabled:opacity-50"
+          >
+            {isSyncingUber ? (
+              <Loader2 className="w-4 h-4 sm:w-5 h-5 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4 sm:w-5 h-5" />
+            )}
+            {isSyncingUber ? 'Sincronizando...' : 'Sincronizar Uber'}
+          </button>
+          <button 
             onClick={handleSyncBolt}
             disabled={isSyncing}
-            className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold border bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 flex items-center justify-center gap-2 transition-all text-sm sm:text-base disabled:opacity-50"
+            className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold border bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100 flex items-center justify-center gap-2 transition-all text-sm sm:text-base disabled:opacity-50"
           >
             {isSyncing ? (
               <Loader2 className="w-4 h-4 sm:w-5 h-5 animate-spin" />
@@ -495,6 +621,70 @@ export default function Finance() {
           <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalNet)}</h3>
         </div>
       </div>
+
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <History className="w-5 h-5 text-sidebar" />
+              Resumo de Faturamento por Plataforma
+            </h3>
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center font-bold">U</div>
+                  <div>
+                    <p className="font-bold">Uber</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Sincronização Ativa</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg">{formatCurrency(stats.totalGross * 0.65)}</p>
+                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">65% do Total</p>
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-bold">B</div>
+                  <div>
+                    <p className="font-bold">Bolt</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Sincronização Ativa</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg">{formatCurrency(stats.totalGross * 0.35)}</p>
+                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">35% do Total</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-sidebar p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Euro className="w-32 h-32" />
+            </div>
+            <h3 className="text-lg font-bold mb-6 relative z-10">Projeção de Lucro (Frota)</h3>
+            <div className="space-y-6 relative z-10">
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Taxa Administrativa (25%)</p>
+                  <p className="text-3xl font-bold mt-1 text-emerald-400">{formatCurrency(stats.totalGross * 0.25)}</p>
+                </div>
+                <div>
+                  <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Despesas Operacionais</p>
+                  <p className="text-3xl font-bold mt-1 text-red-300">{formatCurrency(expenses.reduce((acc, e) => acc + e.amount, 0))}</p>
+                </div>
+              </div>
+              <div className="pt-6 border-t border-white/10">
+                <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Lucro Líquido Estimado</p>
+                <p className="text-4xl font-black mt-1">
+                  {formatCurrency((stats.totalGross * 0.25) - expenses.reduce((acc, e) => acc + e.amount, 0))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">

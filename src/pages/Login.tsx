@@ -20,34 +20,46 @@ export default function Login() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check in Users (Admins/Managers)
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      setUser({
-        id: foundUser.id,
-        email: foundUser.email,
-        role: foundUser.role,
-        full_name: foundUser.full_name
-      });
-      navigate('/');
-      return;
-    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
     // Check in Drivers
-    const foundDriver = drivers.find(d => d.email === email && d.password === password);
+    const foundDriver = drivers.find(d => d.email.toLowerCase() === cleanEmail);
     if (foundDriver) {
-      setUser({
-        id: foundDriver.id,
-        email: foundDriver.email,
-        role: 'driver',
-        full_name: foundDriver.full_name
-      });
-      navigate('/');
-      return;
+      if (foundDriver.password === cleanPassword) {
+        setUser({
+          id: foundDriver.id,
+          email: foundDriver.email,
+          role: 'driver',
+          full_name: foundDriver.full_name
+        });
+        navigate('/');
+        return;
+      } else {
+        alert('Credenciais inválidas. Por favor, verifique sua senha.');
+        return;
+      }
     }
 
-    alert('Credenciais inválidas. Por favor, tente novamente.');
+    // Check in Users (Admins/Managers)
+    const foundAdmin = users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (foundAdmin) {
+      if (foundAdmin.password === cleanPassword) {
+        setUser({
+          id: foundAdmin.id,
+          email: foundAdmin.email,
+          role: foundAdmin.role,
+          full_name: foundAdmin.full_name
+        });
+        navigate('/');
+        return;
+      } else {
+        alert('Credenciais inválidas. Por favor, verifique sua senha.');
+        return;
+      }
+    }
+
+    alert('Credenciais inválidas. Por favor, verifique seu email e senha.');
   };
 
   return (
