@@ -72,7 +72,7 @@ export default function Vehicles() {
       alert('Veículo atualizado com sucesso!');
     } else {
       const newVehicle = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         ...formData,
         year: new Date().getFullYear(),
         category: 'Economy',

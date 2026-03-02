@@ -92,9 +92,9 @@ export default function Users() {
   };
 
   const filteredUsers = users.filter(u => 
-    u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user?.role === 'master' && companies.find(c => c.id === u.company_id)?.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (u.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user?.role === 'master' && (companies.find(c => c.id === u.company_id)?.name || '').toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -148,9 +148,9 @@ export default function Users() {
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">
-                        {u.full_name.charAt(0)}
+                        {(u.full_name || 'U').charAt(0).toUpperCase()}
                       </div>
-                      <p className="text-sm font-bold">{u.full_name}</p>
+                      <p className="text-sm font-bold">{u.full_name || 'Usuário'}</p>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-600">

@@ -65,7 +65,7 @@ export default function Rentals() {
       alert('Aluguel atualizado com sucesso!');
     } else {
       const rental: Rental = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         vehicle_id: formData.vehicle_id || '',
         daily_rate: Number(formData.daily_rate),
         security_deposit: Number(formData.security_deposit),

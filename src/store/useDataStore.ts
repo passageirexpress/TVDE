@@ -403,7 +403,7 @@ export const useDataStore = create<DataState>()(
         const net = totalGross - commission;
 
         const newPayment: Payment = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: crypto.randomUUID(),
           driver_id: driverId,
           driver: driver.full_name,
           period_start: driverImports[0].week_start,
@@ -588,7 +588,7 @@ export const useDataStore = create<DataState>()(
 
         const weeklyCost = rental.daily_rate * 7;
         const newExpense: Expense = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: crypto.randomUUID(),
           driver_id: driverId,
           category: 'aluguel',
           amount: weeklyCost,

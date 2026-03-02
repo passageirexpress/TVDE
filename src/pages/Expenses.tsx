@@ -149,7 +149,7 @@ export default function Expenses() {
       alert('Despesa atualizada com sucesso!');
     } else {
       const expense: Expense = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         category: formData.category as any,
         amount: Number(formData.amount),
         iva_amount: Number(formData.iva_amount) || 0,

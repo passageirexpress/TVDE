@@ -83,7 +83,7 @@ export default function Finance() {
           const exists = drivers.some(d => d.full_name.toLowerCase() === name.toLowerCase());
           if (!exists) {
             addDriver({
-              id: `uber-${ud.id || Math.random()}`,
+              id: `uber-${ud.id || crypto.randomUUID()}`,
               full_name: name,
               email: ud.email || '',
               phone: ud.phone || '',
@@ -114,7 +114,7 @@ export default function Finance() {
           const exists = vehicles.some(v => v.plate.toLowerCase() === plate.toLowerCase());
           if (!exists) {
             addVehicle({
-              id: `uber-${uv.id || Math.random()}`,
+              id: `uber-${uv.id || crypto.randomUUID()}`,
               brand: uv.make || uv.brand || 'Desconhecido',
               model: uv.model || 'Desconhecido',
               year: uv.year || new Date().getFullYear(),
@@ -156,7 +156,7 @@ export default function Finance() {
       alert(data.isMock ? 'Sincronização concluída (Modo de Demonstração Uber).' : 'Sincronização com Uber concluída com sucesso!');
       
       addNotification({
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         title: data.isMock ? 'Sincronização Uber (Modo Demo)' : 'Sincronização Uber Concluída',
         message: data.isMock 
           ? 'As credenciais da Uber não foram configuradas. Foram carregados dados de demonstração.'
@@ -197,7 +197,7 @@ export default function Finance() {
           const exists = drivers.some(d => d.full_name.toLowerCase() === name.toLowerCase());
           if (!exists) {
             addDriver({
-              id: `bolt-${bd.id || Math.random()}`,
+              id: `bolt-${bd.id || crypto.randomUUID()}`,
               full_name: name,
               email: bd.email || '',
               phone: bd.phone || '',
@@ -228,7 +228,7 @@ export default function Finance() {
           const exists = vehicles.some(v => v.plate.toLowerCase() === plate.toLowerCase());
           if (!exists) {
             addVehicle({
-              id: `bolt-${bv.id || Math.random()}`,
+              id: `bolt-${bv.id || crypto.randomUUID()}`,
               brand: bv.make || bv.brand || 'Desconhecido',
               model: bv.model || 'Desconhecido',
               year: bv.year || new Date().getFullYear(),
@@ -270,7 +270,7 @@ export default function Finance() {
       alert(data.isMock ? 'Sincronização concluída (Modo de Demonstração).' : 'Sincronização com Bolt concluída com sucesso!');
       
       addNotification({
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         title: data.isMock ? 'Sincronização (Modo Demo)' : 'Sincronização Bolt Concluída',
         message: data.isMock 
           ? 'As credenciais da Bolt não foram configuradas. Foram carregados dados de demonstração.'
@@ -400,7 +400,7 @@ export default function Finance() {
           }
 
           addNotification({
-            id: Math.random().toString(36).substr(2, 9),
+            id: crypto.randomUUID(),
             title: `Importação ${importType.toUpperCase()} Concluída`,
             message: message,
             date: new Date().toISOString().split('T')[0],
@@ -443,7 +443,7 @@ export default function Finance() {
     
     updatePayment(id, updateData);
     addNotification({
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       title: 'Status de Pagamento Atualizado',
       message: `O pagamento foi marcado como ${newStatus === 'paid' ? 'Pago' : newStatus === 'processing' ? 'em Processamento' : 'Pendente'}.`,
       date: new Date().toISOString().split('T')[0],

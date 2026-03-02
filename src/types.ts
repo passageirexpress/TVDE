@@ -13,6 +13,7 @@ export interface Company {
   subscription_status: 'active' | 'past_due' | 'canceled' | 'incomplete';
   viva_customer_id?: string;
   viva_subscription_id?: string;
+  last_payment_date?: string;
 }
 
 export interface Driver {

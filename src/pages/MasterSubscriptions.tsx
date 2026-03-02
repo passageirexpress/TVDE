@@ -7,7 +7,7 @@ import { Company } from '../types';
 export default function MasterSubscriptions() {
   const { companies, updateCompany } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired' | 'trial'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'past_due' | 'incomplete'>('all');
 
   const filteredCompanies = companies.filter(c => {
     const matchesSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -79,8 +79,8 @@ export default function MasterSubscriptions() {
             >
               <option value="all">Todos os Status</option>
               <option value="active">Ativas</option>
-              <option value="expired">Expiradas</option>
-              <option value="trial">Trial</option>
+              <option value="past_due">Atrasadas</option>
+              <option value="incomplete">Incompletas</option>
             </select>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function MasterSubscriptions() {
                     <div className="flex items-center gap-2">
                       {company.subscription_status === 'active' ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      ) : company.subscription_status === 'expired' ? (
+                      ) : company.subscription_status === 'past_due' ? (
                         <XCircle className="w-4 h-4 text-red-500" />
                       ) : (
                         <Clock className="w-4 h-4 text-amber-500" />
@@ -134,15 +134,16 @@ export default function MasterSubscriptions() {
                         className={cn(
                           "text-xs font-bold px-2 py-1 rounded-full border",
                           company.subscription_status === 'active' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                          company.subscription_status === 'expired' ? "bg-red-50 text-red-700 border-red-100" :
+                          company.subscription_status === 'past_due' ? "bg-red-50 text-red-700 border-red-100" :
                           "bg-amber-50 text-amber-700 border-amber-100"
                         )}
                         value={company.subscription_status || 'active'}
                         onChange={(e) => handleUpdateStatus(company.id, e.target.value)}
                       >
                         <option value="active">Ativa</option>
-                        <option value="expired">Expirada</option>
-                        <option value="trial">Trial</option>
+                        <option value="past_due">Atrasada</option>
+                        <option value="canceled">Cancelada</option>
+                        <option value="incomplete">Incompleta</option>
                       </select>
                     </div>
                   </td>

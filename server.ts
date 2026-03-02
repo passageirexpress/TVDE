@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from 'resend';
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -346,7 +347,57 @@ async function startServer() {
       }
 
       console.log(`[REGISTER] Registro completo para ${admin_email}`);
-      res.json({ success: true, company, user: authData.user });
+
+      // 4. Handle Viva Wallet Payment if plan is not free
+      let checkoutUrl = null;
+      if (plan && plan !== 'free') {
+        try {
+          const amount = plan === 'pro' ? 49.90 : 99.90;
+          const accessToken = await getVivaAccessToken();
+          const sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
+          const amountInCents = Math.round(amount * 100);
+
+          const orderResponse = await axios.post("https://api.vivawallet.com/checkout/v2/orders", {
+            amount: amountInCents,
+            customerTrns: `Assinatura Plano ${plan} - Empresa ${companyId}`,
+            customer: {
+              email: admin_email,
+              fullName: admin_name,
+              requestLang: "pt-PT"
+            },
+            paymentTimeout: 3600,
+            preauth: false,
+            allowRepeatingPayments: true,
+            actionUser: "SaaS Platform",
+            sourceCode: sourceCode,
+            paymentNotification: true,
+            disableExactAmount: false,
+            disableCash: true,
+            disableWallet: false
+          }, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          checkoutUrl = `https://www.vivawallet.com/web/checkout?ref=${orderResponse.data.orderCode}`;
+          
+          // Update company status to incomplete pending payment
+          await supabaseAdmin
+            .from('companies')
+            .update({ subscription_status: 'incomplete' })
+            .eq('id', companyId);
+
+        } catch (vivaError: any) {
+          console.error("[REGISTER VIVA ERROR] Falha ao criar ordem de pagamento:", vivaError.message);
+          // We don't fail the registration, but we leave the subscription as active (or incomplete)
+          // For testing purposes, if Viva is not configured, we'll just let them in.
+          console.log("Viva Wallet credentials might be missing. Proceeding without payment.");
+        }
+      }
+
+      res.json({ success: true, company, user: authData.user, checkoutUrl });
     } catch (error: any) {
       console.error("[REGISTER FATAL ERROR]", error.message);
       res.status(400).json({ error: error.message });

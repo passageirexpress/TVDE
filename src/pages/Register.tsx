@@ -45,8 +45,13 @@ export default function Register() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Erro ao registar empresa');
 
-      alert('Empresa registada com sucesso! Por favor, faça login.');
-      navigate('/login');
+      if (result.checkoutUrl) {
+        alert('Empresa registada com sucesso! Você será redirecionado para o pagamento.');
+        window.location.href = result.checkoutUrl;
+      } else {
+        alert('Empresa registada com sucesso! Por favor, faça login.');
+        navigate('/login');
+      }
     } catch (error: any) {
       alert(error.message);
     } finally {
