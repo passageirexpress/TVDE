@@ -51,6 +51,7 @@ interface DataState {
   updateSettings: (settings: Partial<CompanySettings>) => void;
   
   // Global Actions
+  rehydrateData: () => void;
   resetEarnings: () => void;
   clearAllData: () => void;
   approveRental: (rentalId: string, driverId: string, driverName: string) => void;
@@ -123,7 +124,7 @@ const initialUsers: User[] = [
     full_name: 'Admin Fleet',
     email: 'admin@tvdefleet.com',
     role: 'admin',
-    password: 'admin',
+    password: '1234',
     permissions: ['all']
   }
 ];
@@ -159,6 +160,24 @@ export const useDataStore = create<DataState>()(
         { id: '2', title: 'Pagamento Processado', message: 'O pagamento da semana 16/02 foi concluído com sucesso.', date: '2026-02-23', read: true },
       ],
       settings: initialSettings,
+
+      // Global Actions
+      rehydrateData: () => set((state) => {
+        // Force update passwords to 1234 for existing users/drivers if they are using old defaults
+        const updatedUsers = state.users.map(u => u.password === 'admin' ? { ...u, password: '1234' } : u);
+        const updatedDrivers = state.drivers.map(d => d.password === 'password123' ? { ...d, password: '1234' } : d);
+        
+        const needsRehydration = state.users.length === 0 || state.drivers.length === 0;
+        if (needsRehydration) {
+          return {
+            users: state.users.length === 0 ? initialUsers : updatedUsers,
+            drivers: state.drivers.length === 0 ? driversData : updatedDrivers,
+            vehicles: state.vehicles.length === 0 ? initialVehicles : state.vehicles,
+            rentals: state.rentals.length === 0 ? initialRentals : state.rentals,
+          };
+        }
+        return { users: updatedUsers, drivers: updatedDrivers };
+      }),
 
       // Notifications
       addNotification: (n) => set((state) => ({ notifications: [n, ...state.notifications] })),

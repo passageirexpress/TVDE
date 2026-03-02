@@ -7,59 +7,85 @@ import { useNavigate } from 'react-router-dom';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const { user, setUser } = useAuthStore();
-  const { users, drivers } = useDataStore();
+  const { users, drivers, rehydrateData } = useDataStore();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       navigate('/', { replace: true });
     }
-  }, [user, navigate]);
+    // Ensure data is present
+    if (users.length === 0 || drivers.length === 0) {
+      rehydrateData();
+    }
+  }, [user, navigate, users, drivers, rehydrateData]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoggingIn) return;
     
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    setIsLoggingIn(true);
+    
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPassword = password.trim();
 
-    // Check in Drivers
-    const foundDriver = drivers.find(d => d.email.toLowerCase() === cleanEmail);
-    if (foundDriver) {
-      if (foundDriver.password === cleanPassword) {
-        setUser({
-          id: foundDriver.id,
-          email: foundDriver.email,
-          role: 'driver',
-          full_name: foundDriver.full_name
-        });
-        navigate('/');
-        return;
-      } else {
-        alert('Credenciais inválidas. Por favor, verifique sua senha.');
-        return;
+      // Check in Users (Admins/Managers) first as they are more likely to be the primary users
+      const foundAdmin = users.find(u => u.email.toLowerCase() === cleanEmail);
+      if (foundAdmin) {
+        if (foundAdmin.password === cleanPassword) {
+          setUser({
+            id: foundAdmin.id,
+            email: foundAdmin.email,
+            role: foundAdmin.role,
+            full_name: foundAdmin.full_name
+          });
+          navigate('/');
+          return;
+        } else {
+          alert('Senha incorreta. Por favor, verifique suas credenciais.');
+          return;
+        }
       }
-    }
 
-    // Check in Users (Admins/Managers)
-    const foundAdmin = users.find(u => u.email.toLowerCase() === cleanEmail);
-    if (foundAdmin) {
-      if (foundAdmin.password === cleanPassword) {
-        setUser({
-          id: foundAdmin.id,
-          email: foundAdmin.email,
-          role: foundAdmin.role,
-          full_name: foundAdmin.full_name
-        });
-        navigate('/');
-        return;
-      } else {
-        alert('Credenciais inválidas. Por favor, verifique sua senha.');
-        return;
+      // Check in Drivers
+      const foundDriver = drivers.find(d => d.email.toLowerCase() === cleanEmail);
+      if (foundDriver) {
+        if (foundDriver.password === cleanPassword) {
+          setUser({
+            id: foundDriver.id,
+            email: foundDriver.email,
+            role: 'driver',
+            full_name: foundDriver.full_name
+          });
+          navigate('/');
+          return;
+        } else {
+          alert('Senha incorreta. Por favor, verifique suas credenciais.');
+          return;
+        }
       }
-    }
 
-    alert('Credenciais inválidas. Por favor, verifique seu email e senha.');
+      alert('Utilizador não encontrado. Por favor, verifique o e-mail inserido.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleForgotPassword = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const emailToReset = email.trim();
+    if (!emailToReset) {
+      alert('Por favor, insira seu e-mail para recuperar a senha.');
+      return;
+    }
+    alert(`Um link de recuperação de senha foi enviado para: ${emailToReset}`);
+  };
+
+  const handleCreateAccount = () => {
+    alert('Para criar uma conta, por favor entre em contato com o administrador do sistema ou o gestor da sua frota.');
   };
 
   return (
@@ -93,7 +119,13 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-bold text-gray-700">Senha</label>
-                <a href="#" className="text-xs font-bold text-sidebar hover:underline">Esqueceu a senha?</a>
+                <button 
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs font-bold text-sidebar hover:underline"
+                >
+                  Esqueceu a senha?
+                </button>
               </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -108,13 +140,30 @@ export default function Login() {
               </div>
             </div>
 
-            <button 
-              type="submit"
-              className="w-full bg-sidebar text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20 group"
-            >
-              Entrar
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <div className="space-y-3">
+              <button 
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full bg-sidebar text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoggingIn ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    Entrar
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+              
+              <button 
+                type="button"
+                onClick={handleCreateAccount}
+                className="w-full py-4 border-2 border-sidebar text-sidebar rounded-2xl font-bold hover:bg-sidebar/5 transition-all"
+              >
+                Criar Conta
+              </button>
+            </div>
           </form>
         </div>
 

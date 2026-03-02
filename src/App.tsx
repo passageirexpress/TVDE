@@ -58,10 +58,11 @@ const HomeRedirect = () => {
 export default function App() {
   const setUser = useAuthStore(state => state.setUser);
   const setLoading = useAuthStore(state => state.setLoading);
-  const { drivers, vehicles, rentals, addNotification, notifications } = useDataStore();
+  const { drivers, vehicles, rentals, addNotification, notifications, rehydrateData } = useDataStore();
 
   useEffect(() => {
-    // No changes needed here, just checking
+    rehydrateData();
+    
     setTimeout(() => {
       setLoading(false);
       // Check for document expirations
