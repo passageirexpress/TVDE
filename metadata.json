@@ -1,5 +1,5 @@
 {
   "name": "TVDE Fleet CRM",
-  "description": "Professional Management System for Uber and Bolt Fleets, featuring driver tracking, vehicle maintenance alerts, and automated financial settlements.",
+  "description": "SaaS Management Platform for TVDE Fleets (Uber/Bolt), featuring automated financial settlements, driver tracking, real-time vehicle maintenance alerts, and Viva Wallet payment integration.",
   "requestFramePermissions": []
 }

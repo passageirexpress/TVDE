@@ -8,15 +8,37 @@ export default function Settings() {
   const [settings, setSettings] = useState<CompanySettings>(storeSettings);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    
+    try {
+      const response = await fetch('/api/settings/update', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
+        },
+        body: JSON.stringify({
+          bolt_client_id: settings.bolt_client_id,
+          bolt_client_secret: settings.bolt_client_secret,
+          uber_client_id: settings.uber_client_id,
+          uber_client_secret: settings.uber_client_secret
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao atualizar configurações');
+      }
+
       updateSettings(settings);
+      alert('Configurações da empresa atualizadas com sucesso!');
+    } catch (error: any) {
+      alert('Erro: ' + error.message);
+    } finally {
       setIsSaving(false);
-      alert('Dados de faturamento da empresa atualizados com sucesso!');
-    }, 1000);
+    }
   };
 
   return (
@@ -46,7 +68,7 @@ export default function Settings() {
               <input 
                 type="text" 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                value={settings.name}
+                value={settings.name || ''}
                 onChange={e => setSettings({...settings, name: e.target.value})}
                 required
               />
@@ -58,7 +80,7 @@ export default function Settings() {
               <input 
                 type="text" 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                value={settings.nif}
+                value={settings.nif || ''}
                 onChange={e => setSettings({...settings, nif: e.target.value})}
                 required
               />
@@ -70,7 +92,7 @@ export default function Settings() {
               <input 
                 type="text" 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                value={settings.address}
+                value={settings.address || ''}
                 onChange={e => setSettings({...settings, address: e.target.value})}
                 required
               />
@@ -82,7 +104,7 @@ export default function Settings() {
               <input 
                 type="email" 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                value={settings.email}
+                value={settings.email || ''}
                 onChange={e => setSettings({...settings, email: e.target.value})}
                 required
               />
@@ -94,7 +116,7 @@ export default function Settings() {
               <input 
                 type="text" 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                value={settings.iban}
+                value={settings.iban || ''}
                 onChange={e => setSettings({...settings, iban: e.target.value})}
                 required
               />

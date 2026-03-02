@@ -11,10 +11,13 @@ import {
   Save,
   Edit2,
   Check,
-  Clock
+  Clock,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { Driver, DriverDocument } from '../types';
 import { cn, formatCurrency } from '../lib/utils';
+import { useDataStore } from '../store/useDataStore';
 
 interface DriverDetailsProps {
   driver: Driver;
@@ -23,7 +26,9 @@ interface DriverDetailsProps {
 }
 
 export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetailsProps) {
+  const { uploadDocument } = useDataStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
   const [editedDriver, setEditedDriver] = useState<Driver>(driver);
   const [documents, setDocuments] = useState(driver.documents.length > 0 ? driver.documents : [
     { id: '1', driver_id: driver.id, type: 'license', label: 'Carta de Condução', expiry_date: '2028-10-12', status: 'pending', url: '#' },
@@ -31,6 +36,24 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
     { id: '3', driver_id: driver.id, type: 'id_card', label: 'Cartão de Cidadão', expiry_date: '2029-01-15', status: 'pending', url: '#' },
     { id: '4', driver_id: driver.id, type: 'address_proof', label: 'Comprovativo Morada', expiry_date: '2024-12-30', status: 'pending', url: '#' }
   ]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(docId);
+    try {
+      const url = await uploadDocument(file, `drivers/${driver.id}/${docId}_${file.name}`);
+      setDocuments(prev => prev.map(doc => 
+        doc.id === docId ? { ...doc, url, status: 'pending' } : doc
+      ));
+      alert('Documento enviado com sucesso!');
+    } catch (error: any) {
+      alert('Erro ao enviar documento: ' + error.message);
+    } finally {
+      setIsUploading(null);
+    }
+  };
 
   React.useEffect(() => {
     const today = new Date();
@@ -52,14 +75,43 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
     }
   }, [documents]);
 
-  const handleValidateDoc = (docId: string, newStatus: 'valid' | 'rejected') => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === docId ? { ...doc, status: newStatus } : doc
-    ));
-    alert(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
+  const handleValidateDoc = async (docId: string, newStatus: 'valid' | 'rejected') => {
+    const notes = prompt(`Notas para o documento (${newStatus === 'valid' ? 'Aprovação' : 'Rejeição'}):`);
+    
+    try {
+      const response = await fetch('/api/documents/review', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
+        },
+        body: JSON.stringify({
+          documentId: docId,
+          status: newStatus,
+          type: 'driver',
+          notes
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha ao atualizar status do documento');
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === docId ? { ...doc, status: newStatus } : doc
+      ));
+      alert(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
+    } catch (error: any) {
+      alert('Erro: ' + error.message);
+    }
   };
 
   const handleSave = () => {
+    if (editedDriver.password && editedDriver.password !== driver.password) {
+      if (editedDriver.password.length < 6) {
+        alert('A senha deve ter no mínimo 6 caracteres.');
+        return;
+      }
+    }
+
     if (onUpdate) {
       onUpdate(editedDriver);
     }
@@ -292,6 +344,19 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
                           <span>Expira em: {doc.expiry_date}</span>
                         </div>
                         <div className="flex gap-1">
+                          <label className="p-1 text-sidebar hover:bg-sidebar/10 rounded transition-colors cursor-pointer">
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              onChange={(e) => handleFileUpload(e, doc.id)}
+                              disabled={isUploading === doc.id}
+                            />
+                            {isUploading === doc.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="w-3.5 h-3.5" />
+                            )}
+                          </label>
                           <button 
                             onClick={() => handleValidateDoc(doc.id, 'valid')}
                             className="p-1 text-emerald-500 hover:bg-emerald-50 rounded transition-colors"

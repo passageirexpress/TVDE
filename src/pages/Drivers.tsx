@@ -6,15 +6,18 @@ import { cn, formatPercent, formatCurrency } from '../lib/utils';
 import DriverDetails from '../components/DriverDetails';
 import { Driver } from '../types';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 const ITEMS_PER_PAGE = 20;
 
 export default function Drivers() {
-  const { drivers, addDriver, updateDriver } = useDataStore();
+  const { drivers, addDriver, updateDriver, createUserAuth } = useDataStore();
+  const currentUser = useAuthStore(state => state.user);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'inactive'>('all');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [newDriver, setNewDriver] = useState<Partial<Driver>>({
     status: 'active',
@@ -25,32 +28,29 @@ export default function Drivers() {
   const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleAddDriver = (e: React.FormEvent) => {
+  const handleAddDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    const driver: Driver = {
-      id: Math.random().toString(36).substr(2, 9),
-      full_name: newDriver.full_name || '',
-      nif: newDriver.nif || '',
-      iban: newDriver.iban || '',
-      phone: newDriver.phone || '',
-      email: newDriver.email || '',
-      entry_date: new Date().toISOString().split('T')[0],
-      status: 'active',
-      acceptance_rate: 100,
-      cancellation_rate: 0,
-      rating_uber: 5.0,
-      rating_bolt: 5.0,
-      category: 'Economy',
-      documents: [],
-      commission_type: newDriver.commission_type as any,
-      commission_value: newDriver.commission_value || 0,
-      uber_uuid: newDriver.uber_uuid || '',
-      bolt_id: newDriver.bolt_id || '',
-      password: newDriver.password || '123456'
-    };
-    addDriver(driver);
-    setShowAddModal(false);
-    alert('Motorista adicionado com sucesso!');
+    
+    if (newDriver.password && newDriver.password.length < 6) {
+      alert('A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      await createUserAuth({
+        ...newDriver,
+        role: 'driver'
+      });
+      setShowAddModal(false);
+      alert('Motorista adicionado com sucesso no Supabase Auth!');
+    } catch (error: any) {
+      alert(error.message || 'Erro ao adicionar motorista');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleDriverStatus = (id: string) => {
@@ -251,6 +251,7 @@ export default function Drivers() {
                   <input 
                     required
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.full_name || ''}
                     onChange={e => setNewDriver({...newDriver, full_name: e.target.value})}
                   />
                 </div>
@@ -259,6 +260,7 @@ export default function Drivers() {
                   <input 
                     required
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.nif || ''}
                     onChange={e => setNewDriver({...newDriver, nif: e.target.value})}
                   />
                 </div>
@@ -267,6 +269,7 @@ export default function Drivers() {
                   <input 
                     required type="email"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.email || ''}
                     onChange={e => setNewDriver({...newDriver, email: e.target.value})}
                   />
                 </div>
@@ -275,6 +278,7 @@ export default function Drivers() {
                   <input 
                     required
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.iban || ''}
                     onChange={e => setNewDriver({...newDriver, iban: e.target.value})}
                   />
                 </div>
@@ -282,7 +286,7 @@ export default function Drivers() {
                   <label className="text-sm font-bold text-gray-700">Tipo de Comissão</label>
                   <select 
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
-                    value={newDriver.commission_type}
+                    value={newDriver.commission_type || 'variable'}
                     onChange={e => setNewDriver({...newDriver, commission_type: e.target.value as any})}
                   >
                     <option value="variable">Variável (%)</option>
@@ -294,7 +298,7 @@ export default function Drivers() {
                   <input 
                     required type="number"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
-                    value={newDriver.commission_value}
+                    value={newDriver.commission_value || 0}
                     onChange={e => setNewDriver({...newDriver, commission_value: Number(e.target.value)})}
                   />
                 </div>
@@ -302,6 +306,7 @@ export default function Drivers() {
                   <label className="text-sm font-bold text-gray-700">Uber UUID</label>
                   <input 
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.uber_uuid || ''}
                     onChange={e => setNewDriver({...newDriver, uber_uuid: e.target.value})}
                   />
                 </div>
@@ -309,6 +314,7 @@ export default function Drivers() {
                   <label className="text-sm font-bold text-gray-700">Bolt ID</label>
                   <input 
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.bolt_id || ''}
                     onChange={e => setNewDriver({...newDriver, bolt_id: e.target.value})}
                   />
                 </div>
@@ -317,6 +323,7 @@ export default function Drivers() {
                   <input 
                     required type="password"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-sidebar/10 outline-none"
+                    value={newDriver.password || ''}
                     onChange={e => setNewDriver({...newDriver, password: e.target.value})}
                     placeholder="Senha para o motorista acessar o painel"
                   />
@@ -332,9 +339,14 @@ export default function Drivers() {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20"
+                  disabled={isSaving}
+                  className="flex-1 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20 disabled:opacity-50 flex items-center justify-center"
                 >
-                  Salvar Motorista
+                  {isSaving ? (
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    'Salvar Motorista'
+                  )}
                 </button>
               </div>
             </form>

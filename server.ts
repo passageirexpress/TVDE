@@ -4,17 +4,426 @@ import axios from "axios";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
+import { Resend } from 'resend';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Initialize Supabase Admin client
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseAdmin = (supabaseUrl && supabaseServiceKey) 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
+
+// Viva Wallet Integration Logic
+async function getVivaAccessToken() {
+  const clientId = process.env.VIVA_CLIENT_ID;
+  const clientSecret = process.env.VIVA_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error("Viva Wallet credentials not configured");
+  }
+
+  try {
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+
+    const response = await axios.post("https://accounts.vivawallet.com/connect/token", params, {
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    return response.data.access_token;
+  } catch (error: any) {
+    console.error("Viva Token Error:", error.response?.data || error.message);
+    throw new Error("Falha ao obter token da Viva Wallet");
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Viva Wallet Endpoints
+  app.post("/api/viva/create-order", async (req, res) => {
+    const { amount, planId, companyId, customerEmail, customerName } = req.body;
+
+    try {
+      const accessToken = await getVivaAccessToken();
+      const merchantId = process.env.VIVA_MERCHANT_ID;
+      const apiKey = process.env.VIVA_API_KEY;
+      const sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
+
+      // Viva Wallet expects amount in cents
+      const amountInCents = Math.round(amount * 100);
+
+      const orderResponse = await axios.post("https://api.vivawallet.com/checkout/v2/orders", {
+        amount: amountInCents,
+        customerTrns: `Assinatura Plano ${planId} - Empresa ${companyId}`,
+        customer: {
+          email: customerEmail,
+          fullName: customerName,
+          requestLang: "pt-PT"
+        },
+        paymentTimeout: 3600,
+        preauth: false,
+        allowRepeatingPayments: true,
+        actionUser: "SaaS Platform",
+        sourceCode: sourceCode,
+        paymentNotification: true,
+        disableExactAmount: false,
+        disableCash: true,
+        disableWallet: false
+      }, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      res.json({ 
+        orderCode: orderResponse.data.orderCode,
+        checkoutUrl: `https://www.vivawallet.com/web/checkout?ref=${orderResponse.data.orderCode}`
+      });
+    } catch (error: any) {
+      console.error("Viva Create Order Error:", error.response?.data || error.message);
+      res.status(500).json({ error: "Erro ao criar ordem de pagamento na Viva Wallet" });
+    }
+  });
+
+  app.get("/api/viva/verify-payment", async (req, res) => {
+    const { orderCode, companyId, planId } = req.query;
+
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin not configured" });
+
+    try {
+      const accessToken = await getVivaAccessToken();
+      
+      const response = await axios.get(`https://api.vivawallet.com/checkout/v2/orders/${orderCode}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      const orderData = response.data;
+      // State 3 means paid
+      if (orderData.stateId === 3) {
+        // Update company plan in Supabase
+        const { error } = await supabaseAdmin
+          .from('companies')
+          .update({ 
+            plan: planId, 
+            subscription_status: 'active',
+            last_payment_date: new Date().toISOString()
+          })
+          .eq('id', companyId);
+
+        if (error) throw error;
+
+        res.json({ success: true, message: "Pagamento confirmado e plano ativado!" });
+      } else {
+        res.json({ success: false, state: orderData.stateId, message: "Pagamento ainda não confirmado." });
+      }
+    } catch (error: any) {
+      console.error("Viva Verify Error:", error.response?.data || error.message);
+      res.status(500).json({ error: "Erro ao verificar pagamento" });
+    }
+  });
+
+  // Test Email Endpoint (Resend)
+  app.post("/api/test-email", async (req, res) => {
+    const resendKey = process.env.RESEND_API_KEY;
+    
+    if (!resendKey) {
+      return res.status(400).json({ error: "RESEND_API_KEY não configurada no ambiente." });
+    }
+
+    try {
+      const resend = new Resend(resendKey);
+      const { data, error } = await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: 'passageiroexpress@gmail.com',
+        subject: 'Hello World',
+        html: '<p>Congrats on sending your <strong>first email</strong>!</p>'
+      });
+
+      if (error) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/viva/webhook", async (req, res) => {
+    // Viva Wallet Webhook implementation
+    // This would be called by Viva Wallet when a transaction is completed
+    const { EventData, EventType } = req.body;
+
+    if (EventType === 'TransactionPaymentCompleted' && supabaseAdmin) {
+      const orderCode = EventData.OrderCode;
+      
+      try {
+        const accessToken = await getVivaAccessToken();
+        const orderRes = await axios.get(`https://api.vivawallet.com/checkout/v2/orders/${orderCode}`, {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+
+        // Extract companyId and planId from customerTrns or metadata if available
+        // For this demo, we'll assume we can parse it from customerTrns
+        const trns = orderRes.data.customerTrns;
+        const companyIdMatch = trns.match(/Empresa ([\w-]+)/);
+        const planIdMatch = trns.match(/Plano ([\w-]+)/);
+
+        if (companyIdMatch && planIdMatch) {
+          const companyId = companyIdMatch[1];
+          const planId = planIdMatch[1];
+
+          await supabaseAdmin
+            .from('companies')
+            .update({ 
+              plan: planId, 
+              subscription_status: 'active',
+              last_payment_date: new Date().toISOString()
+            })
+            .eq('id', companyId);
+          
+          console.log(`[WEBHOOK] Plano ${planId} ativado para empresa ${companyId}`);
+        }
+      } catch (err) {
+        console.error("[WEBHOOK ERROR]", err);
+      }
+    }
+
+    res.status(200).send("OK");
+  });
+
+  // Secure company management for master admin
+  app.post("/api/companies/upsert", async (req, res) => {
+    const { admin_name, admin_email, admin_password, ...companyData } = req.body;
+    
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin not configured" });
+
+    try {
+      // 1. Upsert the company
+      const { data: company, error: companyError } = await supabaseAdmin
+        .from('companies')
+        .upsert(companyData)
+        .select()
+        .single();
+
+      if (companyError) throw companyError;
+
+      // 2. If admin details are provided, create the admin user
+      if (admin_email && admin_password) {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: admin_email,
+          password: admin_password,
+          email_confirm: true,
+          user_metadata: { 
+            full_name: admin_name || companyData.name, 
+            role: 'admin', 
+            company_id: company.id 
+          }
+        });
+
+        if (authError) {
+          // If user already exists, we might just want to link them or ignore
+          if (authError.message.includes('already registered')) {
+            console.log("Admin user already exists, skipping auth creation.");
+          } else {
+            throw authError;
+          }
+        } else {
+          // Create profile in users table
+          await supabaseAdmin
+            .from('users')
+            .upsert({
+              id: authData.user.id,
+              email: admin_email,
+              full_name: admin_name || companyData.name,
+              company_id: company.id,
+              role: 'admin'
+            });
+        }
+      }
+
+      res.json({ success: true, data: company });
+    } catch (error: any) {
+      console.error("Company Upsert Error:", error.message);
+      res.status(500).json({ error: error.message || "Erro ao salvar empresa no banco de dados" });
+    }
+  });
+
+  // Public API to register a new company and its first admin user
+  app.post("/api/auth/register-company", async (req, res) => {
+    const { company_name, company_nif, admin_email, admin_password, admin_name, plan } = req.body;
+
+    console.log(`[REGISTER] Iniciando registro para ${admin_email} (${company_name}) - Plano: ${plan || 'free'}`);
+
+    if (!supabaseAdmin) {
+      console.error("[REGISTER ERROR] Supabase Admin client not initialized");
+      return res.status(500).json({ error: "Supabase Service Role Key não configurada no servidor." });
+    }
+
+    try {
+      // 1. Create the company
+      const companyId = crypto.randomUUID();
+      console.log(`[REGISTER] Gerado UUID para empresa: ${companyId}`);
+
+      const { data: company, error: companyError } = await supabaseAdmin
+        .from('companies')
+        .insert([{
+          id: companyId,
+          name: company_name,
+          nif: company_nif,
+          status: 'active',
+          plan: plan || 'free',
+          subscription_status: 'active',
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (companyError) {
+        console.error("[REGISTER ERROR] Falha ao criar empresa:", companyError.message);
+        throw companyError;
+      }
+
+      console.log(`[REGISTER] Empresa criada com sucesso: ${companyId}`);
+
+      // 2. Create the admin user in Supabase Auth
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: admin_email,
+        password: admin_password,
+        email_confirm: true,
+        user_metadata: { full_name: admin_name, role: 'admin', company_id: companyId }
+      });
+
+      if (authError) {
+        console.error("[REGISTER ERROR] Falha ao criar usuário no Auth:", authError.message);
+        // Cleanup company if auth fails
+        await supabaseAdmin.from('companies').delete().eq('id', companyId);
+        throw authError;
+      }
+
+      console.log(`[REGISTER] Usuário Auth criado: ${authData.user.id}`);
+
+      // 3. Create the user profile in custom table
+      const { error: profileError } = await supabaseAdmin
+        .from('users')
+        .insert([{
+          id: authData.user.id,
+          email: admin_email,
+          full_name: admin_name,
+          company_id: companyId,
+          role: 'admin'
+        }]);
+
+      if (profileError) {
+        console.error("[REGISTER ERROR] Falha ao criar perfil do usuário:", profileError.message);
+        // Cleanup Auth user and company if profile creation fails
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        await supabaseAdmin.from('companies').delete().eq('id', companyId);
+        throw profileError;
+      }
+
+      console.log(`[REGISTER] Registro completo para ${admin_email}`);
+      res.json({ success: true, company, user: authData.user });
+    } catch (error: any) {
+      console.error("[REGISTER FATAL ERROR]", error.message);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // API to create user in Supabase Auth (Admin only)
+  app.post("/api/auth/create-user", async (req, res) => {
+    const { email, password, full_name, role, company_id } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Supabase Service Role Key não configurada no servidor." });
+    }
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Não autorizado. Token ausente." });
+    }
+
+    try {
+      // Verify the requester's token
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user: requester }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+
+      if (verifyError || !requester) {
+        return res.status(401).json({ error: "Sessão inválida ou expirada." });
+      }
+
+      // Check if requester has permission (admin or master)
+      // We fetch the role from our custom users table for the requester
+      const { data: requesterProfile } = await supabaseAdmin
+        .from('users')
+        .select('role')
+        .eq('id', requester.id)
+        .single();
+
+      if (!requesterProfile || !['admin', 'master'].includes(requesterProfile.role)) {
+        return res.status(403).json({ error: "Acesso negado. Apenas administradores podem criar usuários." });
+      }
+
+      // 1. Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name, role, company_id }
+      });
+
+      if (authError) throw authError;
+
+      // 2. Create profile in custom table
+      const table = role === 'driver' ? 'drivers' : 'users';
+      const profileData = {
+        id: authData.user.id,
+        email,
+        full_name,
+        company_id,
+        role: role !== 'driver' ? role : undefined,
+        // password removed for security - Supabase Auth handles this
+      };
+
+      const { error: profileError } = await supabaseAdmin
+        .from(table)
+        .insert([profileData]);
+
+      if (profileError) {
+        // Cleanup Auth user if profile creation fails
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        throw profileError;
+      }
+
+      res.json({ success: true, user: authData.user });
+    } catch (error: any) {
+      console.error("Create User Error:", error.message);
+      res.status(400).json({ error: error.message });
+    }
+  });
 
   // In-memory store for demo purposes
   let boltTokens: any = null;
@@ -49,34 +458,229 @@ async function startServer() {
     }
   }
 
-  // API to fetch all Bolt data
-  app.get("/api/bolt/sync", async (req, res) => {
-    const clientId = process.env.BOLT_CLIENT_ID;
-    const clientSecret = process.env.BOLT_CLIENT_SECRET;
-
-    // If credentials are not configured, return mock data for demo purposes
-    if (!clientId || !clientSecret) {
-      console.log("Bolt credentials not configured. Returning mock data.");
-      return res.json({
-        drivers: [
-          { id: 'mock-b1', name: 'João Silva (Bolt)', email: 'joao.bolt@example.com', phone: '912345678', tax_id: '123456789' },
-          { id: 'mock-b2', name: 'Maria Santos (Bolt)', email: 'maria.bolt@example.com', phone: '912345679', tax_id: '987654321' }
-        ],
-        vehicles: [
-          { id: 'mock-bv1', plate_number: 'AA-00-BB', make: 'Toyota', model: 'Corolla', year: 2022 },
-          { id: 'mock-bv2', plate_number: 'CC-11-DD', make: 'Renault', model: 'Zoe', year: 2023 }
-        ],
-        earnings: [
-          { id: 'mock-be1', driver_name: 'João Silva (Bolt)', amount: '450.50', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
-          { id: 'mock-be2', driver_name: 'Maria Santos (Bolt)', amount: '580.20', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
-        ],
-        isMock: true,
-        timestamp: new Date().toISOString()
-      });
+  // Real Email Alert Function using Resend
+  async function sendEmailAlert(to: string, subject: string, message: string) {
+    const resendKey = process.env.RESEND_API_KEY;
+    
+    if (!resendKey) {
+      console.log(`[MOCK EMAIL - NO API KEY] To: ${to} | Subject: ${subject} | Message: ${message}`);
+      return { success: true };
     }
 
     try {
-      const accessToken = await getBoltToken();
+      const resend = new Resend(resendKey);
+      await resend.emails.send({
+        from: 'TVDE Fleet <alerts@tvdefleet.com>',
+        to: [to],
+        subject: subject,
+        html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #050505;">${subject}</h2>
+                <p style="color: #666; font-size: 16px;">${message}</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="color: #999; font-size: 12px;">Este é um alerta automático do TVDE Fleet CRM.</p>
+              </div>`
+      });
+      console.log(`[REAL EMAIL SENT] To: ${to}`);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Resend Email Error:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // API to trigger document expiration alerts
+  app.post("/api/alerts/check-expirations", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (!user) return res.status(401).json({ error: "Sessão inválida" });
+
+      // Fetch vehicles with expiring documents (simplified logic for demo)
+      const { data: vehicles } = await supabaseAdmin
+        .from('vehicles')
+        .select('*')
+        .eq('company_id', user.user_metadata.company_id);
+
+      const today = new Date();
+      const alerts = [];
+
+      for (const v of (vehicles || [])) {
+        const insExp = new Date(v.insurance_expiry);
+        const inspExp = new Date(v.inspection_expiry);
+        const diffIns = Math.ceil((insExp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffIns <= 7 && diffIns > 0) {
+          await sendEmailAlert(user.email!, "Alerta de Seguro - TVDE Fleet", `O seguro da viatura ${v.plate} expira em ${diffIns} dias.`);
+          alerts.push({ plate: v.plate, type: 'insurance', days: diffIns });
+        }
+      }
+
+      res.json({ success: true, alerts_sent: alerts.length, alerts });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API to approve or reject documents
+  app.post("/api/documents/review", async (req, res) => {
+    const { documentId, status, type, notes } = req.body;
+    const authHeader = req.headers.authorization;
+
+    if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (!user) return res.status(401).json({ error: "Sessão inválida" });
+
+      const table = type === 'driver' ? 'driver_documents' : 'vehicle_documents';
+      
+      const { error } = await supabaseAdmin
+        .from(table)
+        .update({ status, review_notes: notes, reviewed_at: new Date().toISOString(), reviewed_by: user.id })
+        .eq('id', documentId);
+
+      if (error) throw error;
+
+      res.json({ success: true, message: `Documento ${status === 'valid' ? 'aprovado' : 'rejeitado'} com sucesso.` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API to update company settings (Uber/Bolt credentials)
+  app.post("/api/settings/update", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const { bolt_client_id, bolt_client_secret, uber_client_id, uber_client_secret } = req.body;
+
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Supabase não configurado." });
+    }
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Não autorizado." });
+    }
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+
+      if (verifyError || !user) {
+        return res.status(401).json({ error: "Sessão inválida." });
+      }
+
+      // Fetch company_id for this user
+      const { data: profile } = await supabaseAdmin
+        .from('users')
+        .select('company_id, role')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.company_id || profile.role !== 'admin') {
+        return res.status(403).json({ error: "Apenas administradores podem atualizar as configurações da empresa." });
+      }
+
+      // Upsert settings for this company
+      const { error: upsertError } = await supabaseAdmin
+        .from('settings')
+        .upsert({
+          company_id: profile.company_id,
+          bolt_client_id,
+          bolt_client_secret,
+          uber_client_id,
+          uber_client_secret,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'company_id' });
+
+      if (upsertError) throw upsertError;
+
+      res.json({ success: true, message: "Configurações atualizadas com sucesso." });
+    } catch (error: any) {
+      console.error("Settings Update Error:", error.message);
+      res.status(500).json({ error: error.message || "Erro ao atualizar configurações." });
+    }
+  });
+
+  // API to fetch all Bolt data
+  app.get("/api/bolt/sync", async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Supabase não configurado." });
+    }
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Não autorizado." });
+    }
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+
+      if (verifyError || !user) {
+        return res.status(401).json({ error: "Sessão inválida." });
+      }
+
+      // Fetch company_id for this user
+      const { data: profile } = await supabaseAdmin
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        return res.status(403).json({ error: "Empresa não encontrada para este usuário." });
+      }
+
+      // Fetch Bolt credentials from settings table
+      const { data: settings } = await supabaseAdmin
+        .from('settings')
+        .select('bolt_client_id, bolt_client_secret')
+        .eq('company_id', profile.company_id)
+        .single();
+
+      const clientId = settings?.bolt_client_id;
+      const clientSecret = settings?.bolt_client_secret;
+
+      // If credentials are not configured, return mock data for demo purposes
+      if (!clientId || !clientSecret) {
+        console.log(`Bolt credentials not configured for company ${profile.company_id}. Returning mock data.`);
+        return res.json({
+          drivers: [
+            { id: 'mock-b1', name: 'João Silva (Bolt)', email: 'joao.bolt@example.com', phone: '912345678', tax_id: '123456789' },
+            { id: 'mock-b2', name: 'Maria Santos (Bolt)', email: 'maria.bolt@example.com', phone: '912345679', tax_id: '987654321' }
+          ],
+          vehicles: [
+            { id: 'mock-bv1', plate_number: 'AA-00-BB', make: 'Toyota', model: 'Corolla', year: 2022 },
+            { id: 'mock-bv2', plate_number: 'CC-11-DD', make: 'Renault', model: 'Zoe', year: 2023 }
+          ],
+          earnings: [
+            { id: 'mock-be1', driver_name: 'João Silva (Bolt)', amount: '450.50', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
+            { id: 'mock-be2', driver_name: 'Maria Santos (Bolt)', amount: '580.20', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
+          ],
+          isMock: true,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Helper to get Bolt Token using client_credentials (scoped to this request)
+      const getBoltTokenLocal = async (cid: string, csec: string) => {
+        const params = new URLSearchParams();
+        params.append('client_id', cid);
+        params.append('client_secret', csec);
+        params.append('grant_type', 'client_credentials');
+        params.append('scope', 'fleet-integration:api');
+
+        const response = await axios.post("https://oidc.bolt.eu/token", params, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        return response.data.access_token;
+      };
+
+      const accessToken = await getBoltTokenLocal(clientId, clientSecret);
       
       const headers = {
         Authorization: `Bearer ${accessToken}`,
@@ -127,45 +731,69 @@ async function startServer() {
 
   // API to fetch all Uber data
   app.get("/api/uber/sync", async (req, res) => {
-    const clientId = process.env.UBER_CLIENT_ID;
-    const clientSecret = process.env.UBER_CLIENT_SECRET;
+    const authHeader = req.headers.authorization;
 
-    // If credentials are not configured, return mock data for demo purposes
-    if (!clientId || !clientSecret) {
-      console.log("Uber credentials not configured. Returning mock data.");
-      return res.json({
-        drivers: [
-          { id: 'mock-u1', name: 'Pedro Costa (Uber)', email: 'pedro.uber@example.com', phone: '912345680', tax_id: '111222333' },
-          { id: 'mock-u2', name: 'Ana Oliveira (Uber)', email: 'ana.uber@example.com', phone: '912345681', tax_id: '444555666' }
-        ],
-        vehicles: [
-          { id: 'mock-uv1', plate_number: 'EE-22-FF', make: 'Mercedes', model: 'E-Class', year: 2023 },
-          { id: 'mock-uv2', plate_number: 'GG-33-HH', make: 'Tesla', model: 'Model 3', year: 2023 }
-        ],
-        earnings: [
-          { id: 'mock-ue1', driver_name: 'Pedro Costa (Uber)', amount: '620.00', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
-          { id: 'mock-ue2', driver_name: 'Ana Oliveira (Uber)', amount: '480.00', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
-        ],
-        isMock: true,
-        timestamp: new Date().toISOString()
-      });
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Supabase não configurado." });
+    }
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Não autorizado." });
     }
 
     try {
-      // Uber API Authentication (Client Credentials or OAuth)
-      // Note: Uber Fleet API typically requires an access token obtained via OAuth
-      // For this implementation, we assume the environment variables might contain a long-lived token 
-      // or we would perform the token exchange here.
-      
-      console.log("Attempting to sync with Uber API...");
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: verifyError } = await supabaseAdmin.auth.getUser(token);
+
+      if (verifyError || !user) {
+        return res.status(401).json({ error: "Sessão inválida." });
+      }
+
+      // Fetch company_id for this user
+      const { data: profile } = await supabaseAdmin
+        .from('users')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.company_id) {
+        return res.status(403).json({ error: "Empresa não encontrada para este usuário." });
+      }
+
+      // Fetch Uber credentials from settings table
+      const { data: settings } = await supabaseAdmin
+        .from('settings')
+        .select('uber_client_id, uber_client_secret')
+        .eq('company_id', profile.company_id)
+        .single();
+
+      const clientId = settings?.uber_client_id;
+      const clientSecret = settings?.uber_client_secret;
+
+      // If credentials are not configured, return mock data for demo purposes
+      if (!clientId || !clientSecret) {
+        console.log(`Uber credentials not configured for company ${profile.company_id}. Returning mock data.`);
+        return res.json({
+          drivers: [
+            { id: 'mock-u1', name: 'Pedro Costa (Uber)', email: 'pedro.uber@example.com', phone: '912345680', tax_id: '111222333' },
+            { id: 'mock-u2', name: 'Ana Oliveira (Uber)', email: 'ana.uber@example.com', phone: '912345681', tax_id: '444555666' }
+          ],
+          vehicles: [
+            { id: 'mock-uv1', plate_number: 'EE-22-FF', make: 'Mercedes', model: 'E-Class', year: 2023 },
+            { id: 'mock-uv2', plate_number: 'GG-33-HH', make: 'Tesla', model: 'Model 3', year: 2023 }
+          ],
+          earnings: [
+            { id: 'mock-ue1', driver_name: 'Pedro Costa (Uber)', amount: '620.00', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
+            { id: 'mock-ue2', driver_name: 'Ana Oliveira (Uber)', amount: '480.00', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
+          ],
+          isMock: true,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      console.log(`Attempting to sync with Uber API for company ${profile.company_id}...`);
       
       // Placeholder for actual Uber API calls
-      // In a production environment, you would use:
-      // const uberToken = await getUberToken(clientId, clientSecret);
-      // const drivers = await axios.get("https://api.uber.com/v1/fleet/drivers", { headers: { Authorization: `Bearer ${uberToken}` } });
-      
-      // For now, we'll return a "connected" state with empty data if no real token logic is implemented
-      // but we'll simulate the structure
       res.json({
         drivers: [],
         vehicles: [],

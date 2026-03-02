@@ -1,5 +1,23 @@
+export type PlanType = 'free' | 'basic' | 'pro' | 'enterprise';
+
+export interface Company {
+  id: string;
+  name: string;
+  nif: string;
+  email?: string;
+  address?: string;
+  iban?: string;
+  created_at: string;
+  status: 'active' | 'inactive';
+  plan: PlanType;
+  subscription_status: 'active' | 'past_due' | 'canceled' | 'incomplete';
+  viva_customer_id?: string;
+  viva_subscription_id?: string;
+}
+
 export interface Driver {
   id: string;
+  company_id?: string;
   full_name: string;
   nif: string;
   iban: string;
@@ -32,17 +50,19 @@ export interface DriverDocument {
 
 export interface Vehicle {
   id: string;
+  company_id?: string;
   brand: string;
   model: string;
   year: number;
   plate: string;
+  color: string;
   category: string;
   entry_date: string;
   insurance_expiry: string;
   inspection_expiry: string;
-  insurance?: string; // Legacy field for compatibility
-  inspection?: string; // Legacy field for compatibility
-  driver?: string; // Legacy field for compatibility
+  insurance?: string;
+  inspection?: string;
+  driver?: string;
   policy_number: string;
   status: 'active' | 'maintenance' | 'inactive';
   current_driver_id?: string;
@@ -52,6 +72,11 @@ export interface Vehicle {
     type: string;
     description: string;
     cost: number;
+  }[];
+  rental_history?: {
+    driver_name: string;
+    start_date: string;
+    end_date: string;
   }[];
 }
 
@@ -66,7 +91,9 @@ export interface VehicleDocument {
 
 export interface Payment {
   id: string;
+  company_id?: string;
   driver_id: string;
+  platform?: 'uber' | 'bolt';
   period_start: string;
   period_end: string;
   gross_revenue: number;
@@ -75,10 +102,17 @@ export interface Payment {
   status: 'pending' | 'paid' | 'processing';
   payment_date?: string;
   receipt_url?: string;
+  // Legacy fields for compatibility
+  driver?: string;
+  gross?: number;
+  net?: number;
+  date?: string;
+  period?: string;
 }
 
 export interface EarningImport {
   id: string;
+  company_id?: string;
   driver_id: string;
   platform: 'uber' | 'bolt';
   amount: number;
@@ -89,8 +123,9 @@ export interface EarningImport {
 
 export interface User {
   id: string;
+  company_id?: string; // Optional for master admins
   email: string;
-  role: 'admin' | 'manager' | 'finance' | 'driver';
+  role: 'master' | 'admin' | 'manager' | 'finance' | 'driver';
   full_name: string;
   password?: string;
   permissions?: string[];
@@ -98,6 +133,7 @@ export interface User {
 
 export interface Expense {
   id: string;
+  company_id?: string;
   driver_id?: string;
   category: 'iva' | 'portagem' | 'combustivel' | 'aluguel' | 'outros';
   amount: number;
@@ -110,6 +146,7 @@ export interface Expense {
 
 export interface Rental {
   id: string;
+  company_id?: string;
   vehicle_id: string;
   driver_id?: string;
   daily_rate: number;
@@ -121,6 +158,7 @@ export interface Rental {
 }
 
 export interface CompanySettings {
+  company_id?: string;
   name: string;
   nif: string;
   address: string;
@@ -134,6 +172,7 @@ export interface CompanySettings {
 
 export interface AppNotification {
   id: string;
+  company_id?: string;
   title: string;
   message: string;
   date: string;

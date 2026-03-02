@@ -66,17 +66,19 @@ const performanceData = [
 
 export default function DriverPanel() {
   const user = useAuthStore(state => state.user);
-  const { expenses, vehicles, drivers } = useDataStore();
-  const [history, setHistory] = useState(initialHistory);
+  const { expenses, vehicles, drivers, payments, syncDriverEarnings, earningImports } = useDataStore();
   const [filter, setFilter] = useState('all');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const myExpenses = expenses.filter(e => e.driver_id === user?.id && e.status === 'approved');
   const myVehicle = vehicles.find(v => v.current_driver_id === user?.id);
   const myDriverData = drivers.find(d => d.id === user?.id);
+  const myPayments = payments.filter(p => p.driver_id === user?.id);
+  const hasUnprocessedEarnings = earningImports.some(ei => ei.driver_id === user?.id && !ei.processed);
 
   const expiringDocs = [
     ...(myVehicle ? [
@@ -107,28 +109,31 @@ export default function DriverPanel() {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Simulate payment received after 5 seconds
+  // Simulate payment received after 8 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
-      setHistory(prev => prev.map(item => {
-        if (item.id === '1' && item.status === 'processing') {
-          // Trigger notification and sound
-          setShowNotification(true);
-          if (audioRef.current) {
-            audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-          }
-          return { ...item, status: 'paid' as const };
-        }
-        return item;
-      }));
+      // Logic moved to store or handled differently
     }, 8000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const filteredHistory = history.filter(item => {
+  const handleSync = async () => {
+    if (!user?.id) return;
+    setIsSyncing(true);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    syncDriverEarnings(user.id);
+    setIsSyncing(false);
+    setShowNotification(true);
+    if (audioRef.current) {
+      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+    }
+  };
+
+  const filteredHistory = myPayments.filter(item => {
     if (filter === 'all') return true;
-    const itemDate = new Date(item.date);
+    const itemDate = new Date(item.payment_date || '');
     const now = new Date();
     
     if (filter === 'week') {
@@ -149,9 +154,9 @@ export default function DriverPanel() {
     return true;
   });
 
-  const totalBalance = filteredHistory.reduce((acc, curr) => acc + curr.net, 0);
-  const pendingBalance = filteredHistory.filter(h => h.status === 'processing').reduce((acc, curr) => acc + curr.net, 0);
-  const paidBalance = filteredHistory.filter(h => h.status === 'paid').reduce((acc, curr) => acc + curr.net, 0);
+  const totalBalance = filteredHistory.reduce((acc, curr) => acc + curr.net_amount, 0);
+  const pendingBalance = filteredHistory.filter(h => h.status !== 'paid').reduce((acc, curr) => acc + curr.net_amount, 0);
+  const paidBalance = filteredHistory.filter(h => h.status === 'paid').reduce((acc, curr) => acc + curr.net_amount, 0);
 
   return (
     <div className="space-y-8 pb-12">
@@ -237,15 +242,32 @@ export default function DriverPanel() {
               />
             </div>
           )}
-          <button 
-            onClick={() => alert('Relatório detalhado em PDF sendo gerado...')}
-            className="bg-sidebar text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm"
-          >
-            <Download className="w-4 h-4 sm:w-5 h-5" />
-            Baixar Extrato
-          </button>
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing || !hasUnprocessedEarnings}
+              className={cn(
+                "bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 text-sm disabled:opacity-50 disabled:cursor-not-allowed",
+                hasUnprocessedEarnings && !isSyncing && "animate-pulse"
+              )}
+            >
+              {isSyncing ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <TrendingUp className="w-4 h-4 sm:w-5 h-5" />
+                  Sincronizar Plataformas
+                </>
+              )}
+            </button>
+            <button 
+              onClick={() => alert('Relatório detalhado em PDF sendo gerado...')}
+              className="bg-sidebar text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm"
+            >
+              <Download className="w-4 h-4 sm:w-5 h-5" />
+              Baixar Extrato
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Balance Summary Section */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -570,21 +592,21 @@ export default function DriverPanel() {
                 )}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.period}</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.period_start} - {item.period_end}</span>
                   <span className={cn(
                     "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border",
                     item.status === 'paid' 
                       ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
                       : "bg-amber-50 text-amber-700 border-amber-100 animate-pulse"
                   )}>
-                    {item.status === 'paid' ? 'Pago' : 'Processando'}
+                    {item.status === 'paid' ? 'Pago' : item.status === 'processing' ? 'Processando' : 'Pendente'}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Líquido Recebido</p>
-                    <p className="text-xl font-black tracking-tight text-gray-900">{formatCurrency(item.net)}</p>
+                    <p className="text-xl font-black tracking-tight text-gray-900">{formatCurrency(item.net_amount)}</p>
                   </div>
                   <div className={cn(
                     "w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm transition-all",
@@ -609,36 +631,26 @@ export default function DriverPanel() {
 
                 {expandedId === item.id && (
                   <div className="mt-5 pt-5 border-t border-gray-100 space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                          <p className="text-[10px] text-gray-400 uppercase font-bold">Uber</p>
+                          <div className="w-2 h-2 bg-sidebar rounded-full"></div>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold">Detalhamento Semanal</p>
                         </div>
                         <div className="pl-4">
-                          <p className="text-sm font-bold">{formatCurrency(item.uber)}</p>
-                          <p className="text-[10px] text-red-500 font-medium">Comissão: -{formatCurrency(item.commission_uber)}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                          <p className="text-[10px] text-gray-400 uppercase font-bold">Bolt</p>
-                        </div>
-                        <div className="pl-4">
-                          <p className="text-sm font-bold">{formatCurrency(item.bolt)}</p>
-                          <p className="text-[10px] text-red-500 font-medium">Comissão: -{formatCurrency(item.commission_bolt)}</p>
+                          <p className="text-sm font-bold">Bruto: {formatCurrency(item.gross_revenue)}</p>
+                          <p className="text-[10px] text-red-500 font-medium">Comissão Empresa (25%): -{formatCurrency(item.commission_fee)}</p>
                         </div>
                       </div>
                     </div>
                     <div className="bg-gray-50 p-3 rounded-xl space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-gray-500">Total Bruto</span>
-                        <span className="text-sm font-black">{formatCurrency(item.total)}</span>
+                        <span className="text-sm font-black">{formatCurrency(item.gross_revenue)}</span>
                       </div>
                       <div className="flex justify-between items-center text-red-500">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Comissões Plataformas</span>
-                        <span className="text-xs font-bold">-{formatCurrency(item.commission_uber + item.commission_bolt)}</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Comissão</span>
+                        <span className="text-xs font-bold">-{formatCurrency(item.commission_fee)}</span>
                       </div>
                       {myExpenses.length > 0 && (
                         <div className="pt-2 border-t border-gray-200 space-y-1">

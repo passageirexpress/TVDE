@@ -8,6 +8,8 @@ import {
 import { FileText, BarChart3, PieChart, Download } from 'lucide-react';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
+import Performance from './pages/Performance';
+import Fleet from './pages/Fleet';
 import Drivers from './pages/Drivers';
 import Vehicles from './pages/Vehicles';
 import Finance from './pages/Finance';
@@ -19,7 +21,15 @@ import Expenses from './pages/Expenses';
 import Rentals from './pages/Rentals';
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
+import Subscription from './pages/Subscription';
+import MasterSubscriptions from './pages/MasterSubscriptions';
+import MasterSettings from './pages/MasterSettings';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
+import Register from './pages/Register';
+import Companies from './pages/Companies';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
 import { checkDocumentExpirations, checkRentalExpirations } from './services/notificationService';
@@ -40,7 +50,7 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user.role !== 'master' && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -56,32 +66,52 @@ const HomeRedirect = () => {
 };
 
 export default function App() {
+  const user = useAuthStore(state => state.user);
   const setUser = useAuthStore(state => state.setUser);
   const setLoading = useAuthStore(state => state.setLoading);
+  const initializeAuth = useAuthStore(state => state.initialize);
   const { drivers, vehicles, rentals, addNotification, notifications, rehydrateData } = useDataStore();
 
   useEffect(() => {
+    initializeAuth();
     rehydrateData();
-    
-    setTimeout(() => {
+  }, [initializeAuth, rehydrateData]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
       setLoading(false);
       // Check for document expirations
       checkDocumentExpirations(drivers, vehicles, addNotification, notifications);
       checkRentalExpirations(rentals, vehicles, drivers, addNotification, notifications);
     }, 500);
-  }, [drivers, vehicles, rentals, addNotification, notifications]);
+    return () => clearTimeout(timer);
+  }, [drivers, vehicles, rentals, addNotification, notifications, setLoading]);
 
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         
-        <Route path="/" element={
+        <Route path="/dashboard" element={
           <ProtectedRoute>
             <Layout />
           </ProtectedRoute>
         }>
           <Route index element={<HomeRedirect />} />
+          <Route path="performance" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Performance />
+            </ProtectedRoute>
+          } />
+          <Route path="fleet" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Fleet />
+            </ProtectedRoute>
+          } />
           <Route path="drivers" element={
             <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
               <Drivers />
@@ -97,8 +127,13 @@ export default function App() {
               <Finance />
             </ProtectedRoute>
           } />
+          <Route path="companies" element={
+            <ProtectedRoute allowedRoles={['master']}>
+              <Companies />
+            </ProtectedRoute>
+          } />
           <Route path="users" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'master']}>
               <Users />
             </ProtectedRoute>
           } />
@@ -116,9 +151,10 @@ export default function App() {
           <Route path="expenses" element={<Expenses />} />
           <Route path="rentals" element={<Rentals />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="subscription" element={user?.role === 'master' ? <MasterSubscriptions /> : <Subscription />} />
           <Route path="settings" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Settings />
+            <ProtectedRoute allowedRoles={['admin', 'master']}>
+              {user?.role === 'master' ? <MasterSettings /> : <Settings />}
             </ProtectedRoute>
           } />
         </Route>

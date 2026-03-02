@@ -11,31 +11,44 @@ import {
   LogOut,
   Shield,
   UserCircle,
-  X
+  BarChart3,
+  X,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 import { useAuthStore } from '../store/useAuthStore';
 
 const adminItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-  { icon: Users, label: 'Motoristas', path: '/drivers' },
-  { icon: Car, label: 'Veículos', path: '/vehicles' },
-  { icon: Euro, label: 'Financeiro', path: '/finance' },
-  { icon: FileText, label: 'Despesas', path: '/expenses' },
-  { icon: Car, label: 'Aluguel', path: '/rentals' },
-  { icon: FileText, label: 'Relatórios', path: '/reports' },
-  { icon: Shield, label: 'Usuários', path: '/users' },
-  { icon: Settings, label: 'Configurações', path: '/settings' },
-  { icon: UserCircle, label: 'Meu Perfil', path: '/profile' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+  { icon: BarChart3, label: 'Desempenho', path: '/dashboard/performance' },
+  { icon: Car, label: 'Frota', path: '/dashboard/fleet' },
+  { icon: Users, label: 'Motoristas', path: '/dashboard/drivers' },
+  { icon: Car, label: 'Veículos', path: '/dashboard/vehicles' },
+  { icon: Euro, label: 'Financeiro', path: '/dashboard/finance' },
+  { icon: FileText, label: 'Despesas', path: '/dashboard/expenses' },
+  { icon: Car, label: 'Aluguel', path: '/dashboard/rentals' },
+  { icon: FileText, label: 'Relatórios', path: '/dashboard/reports' },
+  { icon: Shield, label: 'Usuários', path: '/dashboard/users' },
+  { icon: CreditCard, label: 'Assinatura', path: '/dashboard/subscription' },
+  { icon: Settings, label: 'Configurações', path: '/dashboard/settings' },
+  { icon: UserCircle, label: 'Meu Perfil', path: '/dashboard/profile' },
+];
+
+const masterItems = [
+  { icon: LayoutDashboard, label: 'Dashboard Master', path: '/dashboard' },
+  { icon: Shield, label: 'Empresas', path: '/dashboard/companies' },
+  { icon: Users, label: 'Todos Usuários', path: '/dashboard/users' },
+  { icon: CreditCard, label: 'Assinaturas Master', path: '/dashboard/subscription' },
+  { icon: Settings, label: 'Configurações Master', path: '/dashboard/settings' },
 ];
 
 const driverItems = [
-  { icon: LayoutDashboard, label: 'Meus Ganhos', path: '/driver-panel' },
-  { icon: FileText, label: 'Minhas Despesas', path: '/expenses' },
-  { icon: Car, label: 'Aluguel de Carros', path: '/rentals' },
-  { icon: Car, label: 'Meu Veículo', path: '/vehicles' },
-  { icon: UserCircle, label: 'Meu Perfil', path: '/profile' },
+  { icon: LayoutDashboard, label: 'Meus Ganhos', path: '/dashboard/driver-panel' },
+  { icon: FileText, label: 'Minhas Despesas', path: '/dashboard/expenses' },
+  { icon: Car, label: 'Aluguel de Carros', path: '/dashboard/rentals' },
+  { icon: Car, label: 'Meu Veículo', path: '/dashboard/vehicles' },
+  { icon: UserCircle, label: 'Meu Perfil', path: '/dashboard/profile' },
 ];
 
 interface SidebarProps {
@@ -47,7 +60,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
 
-  const navItems = user?.role === 'driver' ? driverItems : adminItems;
+  const navItems = user?.role === 'master' ? masterItems : user?.role === 'driver' ? driverItems : adminItems;
 
   return (
     <>

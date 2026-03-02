@@ -475,7 +475,7 @@ export default function Expenses() {
                   <input 
                     type="number" step="0.01"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                    value={formData.iva_amount}
+                    value={formData.iva_amount || 0}
                     onChange={e => setFormData({...formData, iva_amount: Number(e.target.value)})}
                   />
                 </div>
@@ -485,7 +485,7 @@ export default function Expenses() {
                 <input 
                   type="number" step="0.01" required
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                  value={formData.amount}
+                  value={formData.amount || 0}
                   onChange={e => setFormData({...formData, amount: Number(e.target.value)})}
                 />
               </div>
@@ -494,7 +494,7 @@ export default function Expenses() {
                 <input 
                   type="date" required
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
-                  value={formData.date}
+                  value={formData.date || ''}
                   onChange={e => setFormData({...formData, date: e.target.value})}
                 />
               </div>
@@ -502,7 +502,7 @@ export default function Expenses() {
                 <label className="text-xs font-bold text-gray-400 uppercase">Descrição</label>
                 <textarea 
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 min-h-[100px]"
-                  value={formData.description}
+                  value={formData.description || ''}
                   onChange={e => setFormData({...formData, description: e.target.value})}
                 ></textarea>
               </div>

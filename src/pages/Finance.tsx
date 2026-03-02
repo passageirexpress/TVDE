@@ -18,16 +18,21 @@ import {
 import Papa from 'papaparse';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
+import { supabase } from '../lib/supabase';
 
 interface ImportedData {
   id: string;
-  driver: string;
-  platform: 'uber' | 'bolt';
-  gross: number;
-  net: number;
-  commission: number;
-  period: string;
-  status: 'pending' | 'paid';
+  driver?: string;
+  platform?: 'uber' | 'bolt';
+  gross?: number;
+  net?: number;
+  commission?: number;
+  period?: string;
+  status: 'pending' | 'paid' | 'processing';
+  driver_id?: string;
+  gross_revenue?: number;
+  net_amount?: number;
+  commission_fee?: number;
 }
 
 const initialPayments = [
@@ -52,7 +57,12 @@ export default function Finance() {
   const handleSyncUber = async () => {
     setIsSyncingUber(true);
     try {
-      const response = await fetch('/api/uber/sync');
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/uber/sync', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
       if (!response.ok) throw new Error('Falha ao sincronizar dados da Uber');
       const data = await response.json();
       
@@ -109,6 +119,7 @@ export default function Finance() {
               model: uv.model || 'Desconhecido',
               year: uv.year || new Date().getFullYear(),
               plate: plate,
+              color: uv.color || 'Prata',
               category: 'Economy',
               status: 'active',
               entry_date: new Date().toISOString().split('T')[0],
@@ -165,7 +176,12 @@ export default function Finance() {
   const handleSyncBolt = async () => {
     setIsSyncing(true);
     try {
-      const response = await fetch('/api/bolt/sync');
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/bolt/sync', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
       if (!response.ok) throw new Error('Falha ao sincronizar dados da Bolt');
       const data = await response.json();
       
@@ -217,6 +233,7 @@ export default function Finance() {
               model: bv.model || 'Desconhecido',
               year: bv.year || new Date().getFullYear(),
               plate: plate,
+              color: bv.color || 'Prata',
               category: 'Economy',
               status: 'active',
               entry_date: new Date().toISOString().split('T')[0],
@@ -289,13 +306,13 @@ export default function Finance() {
 
   const handleExportExcel = () => {
     const dataToExport = filteredPayments.map(p => ({
-      Motorista: p.driver,
-      Período: p.period,
-      'Receita Bruta': p.gross,
-      'Taxas Plataforma': p.gross - p.net,
-      'Valor Líquido': p.net,
+      Motorista: p.driver || drivers.find(d => d.id === p.driver_id)?.full_name,
+      Período: p.period || `${p.period_start} - ${p.period_end}`,
+      'Receita Bruta': p.gross_revenue || p.gross || 0,
+      'Taxas Plataforma': (p.gross_revenue || p.gross || 0) - (p.net_amount || p.net || 0),
+      'Valor Líquido': p.net_amount || p.net || 0,
       Status: p.status === 'paid' ? 'Pago' : 'Pendente',
-      Data: p.date
+      Data: p.payment_date || p.date
     }));
 
     const csv = Papa.unparse(dataToExport);
@@ -771,20 +788,20 @@ export default function Finance() {
                 filteredPayments.map((p) => (
                   <tr key={p.id} className="data-grid-row">
                     <td className="px-4 py-4">
-                      <p className="text-sm font-bold">{p.driver}</p>
+                      <p className="text-sm font-bold">{p.driver || drivers.find(d => d.id === p.driver_id)?.full_name}</p>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">{p.period}</td>
-                    <td className="px-4 py-4 text-sm font-medium">{formatCurrency(p.gross)}</td>
-                    <td className="px-4 py-4 text-sm text-red-500">-{formatCurrency(p.gross - p.net)}</td>
-                    <td className="px-4 py-4 text-sm font-bold text-emerald-600">{formatCurrency(p.net)}</td>
+                    <td className="px-4 py-4 text-sm text-gray-600">{p.period || `${p.period_start} - ${p.period_end}`}</td>
+                    <td className="px-4 py-4 text-sm font-medium">{formatCurrency(p.gross_revenue || p.gross || 0)}</td>
+                    <td className="px-4 py-4 text-sm text-red-500">-{formatCurrency((p.gross_revenue || p.gross || 0) - (p.net_amount || p.net || 0))}</td>
+                    <td className="px-4 py-4 text-sm font-bold text-emerald-600">{formatCurrency(p.net_amount || p.net || 0)}</td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1">
                         {getStatusBadge(p.status)}
-                        {p.status === 'paid' && (
+                        {(p.status === 'paid' || p.status === 'processing') && (
                           <input 
                             type="date" 
                             className="text-[10px] border-none bg-transparent text-gray-400 focus:ring-0 p-0 h-auto w-24"
-                            value={p.date || ''}
+                            value={p.payment_date || p.date || ''}
                             onChange={(e) => handleStatusChange(p.id, 'paid', e.target.value)}
                           />
                         )}

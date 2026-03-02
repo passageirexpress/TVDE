@@ -94,7 +94,7 @@ export default function Layout() {
                     <button 
                       onClick={() => {
                         setShowNotifications(false);
-                        navigate('/notifications');
+                        navigate('/dashboard/notifications');
                       }}
                       className="text-[10px] font-bold text-sidebar uppercase tracking-widest hover:underline"
                     >
@@ -105,7 +105,7 @@ export default function Layout() {
               )}
             </div>
             
-            <Link to="/profile" className="flex items-center gap-3 pl-3 lg:pl-6 border-l border-gray-100 cursor-pointer hover:opacity-80 transition-opacity">
+            <Link to="/dashboard/profile" className="flex items-center gap-3 pl-3 lg:pl-6 border-l border-gray-100 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-semibold">{user?.full_name || 'Usuário'}</p>
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider">

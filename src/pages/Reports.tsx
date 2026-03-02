@@ -72,11 +72,12 @@ export default function Reports() {
       }
 
       let dateMatch = true;
-      if (dateRange.start && p.date) {
-        dateMatch = dateMatch && new Date(p.date) >= new Date(dateRange.start);
+      const pDate = p.payment_date || p.date;
+      if (dateRange.start && pDate) {
+        dateMatch = dateMatch && new Date(pDate) >= new Date(dateRange.start);
       }
-      if (dateRange.end && p.date) {
-        dateMatch = dateMatch && new Date(p.date) <= new Date(dateRange.end);
+      if (dateRange.end && pDate) {
+        dateMatch = dateMatch && new Date(pDate) <= new Date(dateRange.end);
       }
 
       return driverMatch && vehicleMatch && dateMatch;
@@ -84,27 +85,42 @@ export default function Reports() {
   }, [payments, selectedDriverId, selectedVehicleType, dateRange, drivers, vehicles]);
 
   const revenueByDay = useMemo(() => {
-    // Group payments by day of week
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const data = days.map(day => ({ name: day, uber: 0, bolt: 0, total: 0 }));
     
     filteredPayments.forEach(p => {
-      if (p.status === 'paid' && p.date) {
-        const dayIndex = new Date(p.date).getDay();
-        // Distribute randomly between uber and bolt for mock visualization
-        const uber = p.gross * 0.65;
-        const bolt = p.gross * 0.35;
-        data[dayIndex].uber += uber;
-        data[dayIndex].bolt += bolt;
-        data[dayIndex].total += p.gross;
+      const pDate = p.payment_date || p.date;
+      if (p.status === 'paid' && pDate) {
+        const dateObj = new Date(pDate);
+        const dayIndex = dateObj.getDay();
+        
+        const gross = p.gross_revenue || p.gross || 0;
+        // If platform is specified, use it, otherwise split for visualization
+        if (p.platform === 'uber') {
+          data[dayIndex].uber += gross;
+        } else if (p.platform === 'bolt') {
+          data[dayIndex].bolt += gross;
+        } else {
+          data[dayIndex].uber += gross * 0.65;
+          data[dayIndex].bolt += gross * 0.35;
+        }
+        data[dayIndex].total += gross;
       }
     });
     return data;
   }, [filteredPayments]);
 
-  const totalRevenue = filteredPayments.reduce((acc, p) => acc + p.gross, 0);
-  const uberRevenue = totalRevenue * 0.65;
-  const boltRevenue = totalRevenue * 0.35;
+  const totalRevenue = filteredPayments.reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
+  const uberRevenue = filteredPayments.reduce((acc, p) => {
+    if (p.platform === 'uber') return acc + (p.gross_revenue || p.gross || 0);
+    if (!p.platform) return acc + (p.gross_revenue || p.gross || 0) * 0.65;
+    return acc;
+  }, 0);
+  const boltRevenue = filteredPayments.reduce((acc, p) => {
+    if (p.platform === 'bolt') return acc + (p.gross_revenue || p.gross || 0);
+    if (!p.platform) return acc + (p.gross_revenue || p.gross || 0) * 0.35;
+    return acc;
+  }, 0);
 
   const performanceData = useMemo(() => {
     const relevantDrivers = selectedDriverId === 'all' 
@@ -113,7 +129,7 @@ export default function Reports() {
 
     return relevantDrivers.slice(0, 5).map(d => {
       const driverPayments = filteredPayments.filter(p => p.driver === d.full_name || p.driver_id === d.id);
-      const revenue = driverPayments.reduce((acc, p) => acc + p.gross, 0);
+      const revenue = driverPayments.reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
       return {
         name: d.full_name,
         revenue,

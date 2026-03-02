@@ -3,29 +3,34 @@ import { Plus, Search, Shield, Mail, MoreHorizontal, UserPlus, X, Save } from 'l
 import { cn } from '../lib/utils';
 import { User } from '../types';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function Users() {
-  const { users, addUser, updateUser } = useDataStore();
+  const { users, addUser, updateUser, createUserAuth, companies } = useDataStore();
+  const user = useAuthStore(state => state.user);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     role: 'manager' as User['role'],
     password: '',
-    permissions: [] as string[]
+    permissions: [] as string[],
+    company_id: ''
   });
 
-  const handleOpenModal = (user?: User) => {
-    if (user) {
-      setEditingUser(user);
+  const handleOpenModal = (u?: User) => {
+    if (u) {
+      setEditingUser(u);
       setFormData({
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        password: user.password || '',
-        permissions: user.permissions || []
+        full_name: u.full_name || '',
+        email: u.email || '',
+        role: u.role || 'manager',
+        password: u.password || '',
+        permissions: u.permissions || [],
+        company_id: u.company_id || ''
       });
     } else {
       setEditingUser(null);
@@ -34,34 +39,47 @@ export default function Users() {
         email: '',
         role: 'manager',
         password: '',
-        permissions: []
+        permissions: [],
+        company_id: user?.role === 'master' ? '' : (user?.company_id || '')
       });
     }
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.full_name || !formData.email) {
       alert('Por favor, preencha todos os campos.');
       return;
     }
 
-    if (editingUser) {
-      updateUser(editingUser.id, formData);
-      alert('Usuário atualizado com sucesso!');
-    } else {
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData
-      };
-      addUser(newUser);
-      alert('Usuário adicionado com sucesso!');
+    if (user?.role === 'master' && !formData.company_id) {
+      alert('Por favor, selecione uma empresa.');
+      return;
     }
-    setShowModal(false);
+
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      if (editingUser) {
+        updateUser(editingUser.id, formData);
+        alert('Usuário atualizado com sucesso!');
+      } else {
+        await createUserAuth(formData);
+        alert('Usuário criado com sucesso!');
+      }
+      setShowModal(false);
+    } catch (error: any) {
+      alert(error.message || 'Erro ao salvar usuário');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case 'master':
+        return <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full text-xs font-bold border border-red-100">Master</span>;
       case 'admin':
         return <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-bold border border-purple-100">Admin</span>;
       case 'finance':
@@ -69,28 +87,33 @@ export default function Users() {
       case 'manager':
         return <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-bold border border-emerald-100">Gestor</span>;
       default:
-        return null;
+        return <span className="bg-gray-50 text-gray-700 px-2.5 py-0.5 rounded-full text-xs font-bold border border-gray-100">{role}</span>;
     }
   };
 
   const filteredUsers = users.filter(u => 
     u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user?.role === 'master' && companies.find(c => c.id === u.company_id)?.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Acessos</h1>
-          <p className="text-gray-500 mt-1">Gerencie os administradores e níveis de permissão do sistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {user?.role === 'master' ? 'Gestão Global de Usuários' : 'Gestão de Acessos'}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            {user?.role === 'master' ? 'Visualize e gerencie todos os usuários de todas as empresas.' : 'Gerencie os administradores e níveis de permissão do sistema.'}
+          </p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
           className="bg-sidebar text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10"
         >
           <UserPlus className="w-5 h-5" />
-          Novo Administrador
+          Novo Usuário
         </button>
       </div>
 
@@ -100,7 +123,7 @@ export default function Users() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Buscar por nome ou email..." 
+              placeholder="Buscar por nome, email ou empresa..." 
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sidebar/10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -114,33 +137,39 @@ export default function Users() {
               <tr className="bg-gray-50/50">
                 <th className="data-grid-header">Nome Completo</th>
                 <th className="data-grid-header">Email</th>
+                {user?.role === 'master' && <th className="data-grid-header">Empresa</th>}
                 <th className="data-grid-header">Nível de Acesso</th>
                 <th className="data-grid-header text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="data-grid-row">
+              {filteredUsers.map((u) => (
+                <tr key={u.id} className="data-grid-row">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-sm">
-                        {user.full_name.charAt(0)}
+                        {u.full_name.charAt(0)}
                       </div>
-                      <p className="text-sm font-bold">{user.full_name}</p>
+                      <p className="text-sm font-bold">{u.full_name}</p>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Mail className="w-3.5 h-3.5 text-gray-400" />
-                      {user.email}
+                      {u.email}
                     </div>
                   </td>
+                  {user?.role === 'master' && (
+                    <td className="px-4 py-4 text-sm font-medium text-gray-700">
+                      {companies.find(c => c.id === u.company_id)?.name || 'N/A'}
+                    </td>
+                  )}
                   <td className="px-4 py-4">
-                    {getRoleBadge(user.role)}
+                    {getRoleBadge(u.role)}
                   </td>
                   <td className="px-4 py-4 text-right">
                     <button 
-                      onClick={() => handleOpenModal(user)}
+                      onClick={() => handleOpenModal(u)}
                       className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors"
                     >
                       <MoreHorizontal className="w-5 h-5" />
@@ -163,6 +192,21 @@ export default function Users() {
               </button>
             </div>
             <div className="p-8 space-y-4">
+              {user?.role === 'master' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase">Empresa</label>
+                  <select 
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                    value={formData.company_id}
+                    onChange={(e) => setFormData({...formData, company_id: e.target.value})}
+                  >
+                    <option value="">Selecionar Empresa</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-400 uppercase">Nome Completo</label>
                 <input 
@@ -188,6 +232,7 @@ export default function Users() {
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value as User['role']})}
                 >
+                  {user?.role === 'master' && <option value="master">Master Admin</option>}
                   <option value="admin">Administrador</option>
                   <option value="finance">Financeiro</option>
                   <option value="manager">Gestor</option>
@@ -200,7 +245,7 @@ export default function Users() {
                   className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={editingUser ? "Deixe em branco para manter" : "Mínimo 6 caracteres"}
                 />
               </div>
               <div className="space-y-2">
@@ -234,10 +279,17 @@ export default function Users() {
               </button>
               <button 
                 onClick={handleSave}
-                className="flex-1 py-3 bg-sidebar text-white rounded-xl font-bold hover:bg-black transition-all shadow-xl shadow-sidebar/20 flex items-center justify-center gap-2"
+                disabled={isSaving}
+                className="flex-1 py-3 bg-sidebar text-white rounded-xl font-bold hover:bg-black transition-all shadow-xl shadow-sidebar/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <Save className="w-4 h-4" />
-                {editingUser ? 'Salvar Alterações' : 'Criar Usuário'}
+                {isSaving ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {editingUser ? 'Salvar Alterações' : 'Criar Usuário'}
+                  </>
+                )}
               </button>
             </div>
           </div>

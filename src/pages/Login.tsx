@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Car, Lock, Mail, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
+import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
@@ -25,6 +26,12 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoggingIn) return;
+
+    const isPlaceholder = import.meta.env.VITE_SUPABASE_URL?.includes('placeholder') || !import.meta.env.VITE_SUPABASE_URL;
+    if (isPlaceholder && !(email === 'master@tvdefleet.com' && password === '1234')) {
+      alert('As chaves do Supabase não foram configuradas. Use o login Master Admin (master@tvdefleet.com / 1234) para testar localmente.');
+      return;
+    }
     
     setIsLoggingIn(true);
     
@@ -32,43 +39,109 @@ export default function Login() {
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
-      // Check in Users (Admins/Managers) first as they are more likely to be the primary users
-      const foundAdmin = users.find(u => u.email.toLowerCase() === cleanEmail);
-      if (foundAdmin) {
-        if (foundAdmin.password === cleanPassword) {
+      // 1. Sign in with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+      if (error) {
+        console.log("Auth Error:", error.message);
+        
+        // Fallback for Master Admin and Legacy Users
+        // We check this even if the error isn't exactly "Invalid login credentials"
+        // to be more resilient during setup.
+        
+        // Check for Master Admin Hardcoded Fallback
+        if (cleanEmail === 'master@tvdefleet.com' && cleanPassword === '1234') {
+          console.log("Master Admin Fallback Triggered");
           setUser({
-            id: foundAdmin.id,
-            email: foundAdmin.email,
-            role: foundAdmin.role,
-            full_name: foundAdmin.full_name
+            id: 'master-id',
+            email: 'master@tvdefleet.com',
+            role: 'master',
+            full_name: 'Master Admin'
           });
           navigate('/');
           return;
-        } else {
-          alert('Senha incorreta. Por favor, verifique suas credenciais.');
-          return;
         }
+
+        // Check in Users Table (Legacy/Manual Fallback)
+        try {
+          const { data: adminData, error: dbError } = await supabase
+            .from('users')
+            .select('id, email, role, full_name, company_id')
+            .eq('email', cleanEmail)
+            .eq('password', cleanPassword)
+            .maybeSingle();
+
+          if (adminData) {
+            console.log("Database Fallback Triggered (User)");
+            setUser({
+              id: adminData.id,
+              email: adminData.email,
+              role: adminData.role,
+              full_name: adminData.full_name,
+              company_id: adminData.company_id
+            });
+            navigate('/');
+            return;
+          }
+
+          // Check in Drivers Table
+          const { data: driverData } = await supabase
+            .from('drivers')
+            .select('id, email, full_name, company_id, password')
+            .eq('email', cleanEmail)
+            .eq('password', cleanPassword)
+            .maybeSingle();
+
+          if (driverData) {
+            console.log("Database Fallback Triggered (Driver)");
+            setUser({
+              id: driverData.id,
+              email: driverData.email,
+              role: 'driver',
+              full_name: driverData.full_name,
+              company_id: driverData.company_id
+            });
+            navigate('/');
+            return;
+          }
+        } catch (dbFallbackError) {
+          console.error("Database fallback failed:", dbFallbackError);
+        }
+
+        // If all fallbacks fail, show the original error
+        if (error.message === 'Invalid login credentials') {
+          throw new Error('Credenciais inválidas. Se você é o Master Admin, use master@tvdefleet.com / 1234. Se acabou de criar um usuário, verifique se confirmou o e-mail (se aplicável).');
+        }
+        throw error;
       }
 
-      // Check in Drivers
-      const foundDriver = drivers.find(d => d.email.toLowerCase() === cleanEmail);
-      if (foundDriver) {
-        if (foundDriver.password === cleanPassword) {
-          setUser({
-            id: foundDriver.id,
-            email: foundDriver.email,
-            role: 'driver',
-            full_name: foundDriver.full_name
-          });
-          navigate('/');
-          return;
-        } else {
-          alert('Senha incorreta. Por favor, verifique suas credenciais.');
-          return;
-        }
-      }
+      if (data.session) {
+        // Fetch profile data
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', cleanEmail)
+          .single();
 
-      alert('Utilizador não encontrado. Por favor, verifique o e-mail inserido.');
+        if (userData) {
+          setUser(userData);
+        } else {
+          const { data: driverData } = await supabase
+            .from('drivers')
+            .select('*')
+            .eq('email', cleanEmail)
+            .single();
+          if (driverData) {
+            setUser({ ...driverData, role: 'driver' } as any);
+          }
+        }
+        navigate('/');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erro ao entrar. Verifique suas credenciais.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -86,6 +159,13 @@ export default function Login() {
 
   const handleCreateAccount = () => {
     alert('Para criar uma conta, por favor entre em contato com o administrador do sistema ou o gestor da sua frota.');
+  };
+
+  const handleResetSystem = () => {
+    if (confirm('Deseja redefinir os dados do sistema? Isso limpará o cache do seu navegador e restaurará as senhas padrão (1234).')) {
+      localStorage.removeItem('tvde-fleet-data');
+      window.location.reload();
+    }
   };
 
   return (
@@ -167,9 +247,17 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center mt-8 text-sm text-gray-400">
-          © 2024 TVDE Fleet Management. Todos os direitos reservados.
-        </p>
+        <div className="text-center mt-8 space-y-4">
+          <button 
+            onClick={handleResetSystem}
+            className="text-xs text-gray-400 hover:text-sidebar transition-colors underline underline-offset-4"
+          >
+            Problemas ao entrar? Redefinir dados do sistema
+          </button>
+          <p className="text-sm text-gray-400">
+            © 2024 TVDE Fleet Management. Todos os direitos reservados.
+          </p>
+        </div>
       </div>
     </div>
   );

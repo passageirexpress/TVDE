@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, Search, Car as CarIcon, AlertTriangle, CheckCircle2, MoreVertical, ChevronDown, ChevronUp, History, User, ExternalLink, X, Save } from 'lucide-react';
+import { Plus, Search, Car as CarIcon, AlertTriangle, CheckCircle2, MoreVertical, ChevronDown, ChevronUp, History, User, ExternalLink, X, Save, Clock, Eye } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
+import VehicleDetails from '../components/VehicleDetails';
 
 export default function Vehicles() {
   const { vehicles, addVehicle, updateVehicle } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const [editingVehicle, setEditingVehicle] = useState<any>(null);
+  const [errors, setErrors] = useState<any>({});
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
@@ -21,16 +24,17 @@ export default function Vehicles() {
   });
 
   const handleOpenModal = (vehicle?: any) => {
+    setErrors({});
     if (vehicle) {
       setEditingVehicle(vehicle);
       setFormData({
-        brand: vehicle.brand,
-        model: vehicle.model,
-        plate: vehicle.plate,
+        brand: vehicle.brand || '',
+        model: vehicle.model || '',
+        plate: vehicle.plate || '',
         current_driver_id: vehicle.current_driver_id || '',
-        insurance: vehicle.insurance || vehicle.insurance_expiry,
-        inspection: vehicle.inspection || vehicle.inspection_expiry,
-        status: vehicle.status
+        insurance: vehicle.insurance || vehicle.insurance_expiry || '',
+        inspection: vehicle.inspection || vehicle.inspection_expiry || '',
+        status: vehicle.status || 'active'
       });
     } else {
       setEditingVehicle(null);
@@ -48,8 +52,18 @@ export default function Vehicles() {
   };
 
   const handleSave = () => {
-    if (!formData.brand || !formData.model || !formData.plate) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
+    const newErrors: any = {};
+    if (!formData.brand.trim()) newErrors.brand = 'A marca é obrigatória';
+    if (!formData.model.trim()) newErrors.model = 'O modelo é obrigatório';
+    if (!formData.plate.trim()) {
+      newErrors.plate = 'A matrícula é obrigatória';
+    } else if (!validatePlate(formData.plate)) {
+      newErrors.plate = 'Formato inválido (Use XX-00-XX)';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      alert('Por favor, preencha todos os campos obrigatórios: Marca, Modelo e Matrícula.');
       return;
     }
 
@@ -105,6 +119,20 @@ export default function Vehicles() {
     return expiry < today;
   };
 
+  const isExpiringCritical = (dateStr: string) => {
+    const expiry = new Date(dateStr);
+    const today = new Date();
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 7 && diffDays > 0;
+  };
+
+  const validatePlate = (plate: string) => {
+    // Formatos: XX-00-XX ou AA-00-AA (Padrão Português)
+    const regex = /^[A-Z]{2}-\d{2}-[A-Z]{2}$|^[A-Z]{2}-\d{2}-\d{2}$|^\d{2}-[A-Z]{2}-\d{2}$|^\d{2}-\d{2}-[A-Z]{2}$/;
+    return regex.test(plate.toUpperCase());
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -137,23 +165,35 @@ export default function Vehicles() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredVehicles.map((v) => {
           const insuranceExpiring = isExpiringSoon(v.insurance);
+          const insuranceCritical = isExpiringCritical(v.insurance);
           const insuranceExpired = isExpired(v.insurance);
+          
           const inspectionExpiring = isExpiringSoon(v.inspection);
+          const inspectionCritical = isExpiringCritical(v.inspection);
           const inspectionExpired = isExpired(v.inspection);
+          
           const hasAlert = insuranceExpiring || insuranceExpired || inspectionExpiring || inspectionExpired;
+          const hasCritical = insuranceCritical || inspectionCritical || insuranceExpired || inspectionExpired;
 
           return (
             <div 
               key={v.id} 
               className={cn(
                 "bg-white rounded-2xl shadow-sm border transition-all overflow-hidden relative",
-                hasAlert ? "border-red-200 ring-1 ring-red-100" : "border-gray-100 hover:shadow-md"
+                hasCritical ? "border-red-500 ring-2 ring-red-100 shadow-lg shadow-red-50/50" : 
+                hasAlert ? "border-amber-200 ring-1 ring-amber-100" : "border-gray-100 hover:shadow-md"
               )}
             >
-              {hasAlert && (
-                <div className="bg-red-500 text-white text-[10px] font-bold uppercase py-1 px-3 flex items-center justify-center gap-2 animate-pulse">
+              {hasCritical && (
+                <div className="bg-red-600 text-white text-[10px] font-bold uppercase py-1 px-3 flex items-center justify-center gap-2 animate-pulse">
                   <AlertTriangle className="w-3 h-3" />
-                  Documentação Pendente
+                  Atenção Imediata: Prazo Crítico
+                </div>
+              )}
+              {!hasCritical && hasAlert && (
+                <div className="bg-amber-500 text-white text-[10px] font-bold uppercase py-1 px-3 flex items-center justify-center gap-2">
+                  <Clock className="w-3 h-3" />
+                  Expira em breve
                 </div>
               )}
               <div className="p-6">
@@ -165,6 +205,13 @@ export default function Vehicles() {
                     <CarIcon className="w-6 h-6" />
                   </div>
                   <div className="flex gap-1">
+                    <button 
+                      onClick={() => setSelectedVehicle(v)}
+                      className="p-1 text-gray-400 hover:text-sidebar transition-colors"
+                      title="Ver Detalhes"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                     <button 
                       onClick={() => handleOpenModal(v)}
                       className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
@@ -319,32 +366,56 @@ export default function Vehicles() {
             <div className="p-8 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase">Marca</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Marca <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                    className={cn(
+                      "w-full px-4 py-2 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 transition-all",
+                      errors.brand ? "border-red-500 bg-red-50" : "border-gray-100"
+                    )}
                     value={formData.brand}
-                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                    onChange={(e) => {
+                      setFormData({...formData, brand: e.target.value});
+                      if (errors.brand) setErrors({...errors, brand: null});
+                    }}
+                    placeholder="Ex: Toyota"
                   />
+                  {errors.brand && <p className="text-[10px] text-red-500 font-bold">{errors.brand}</p>}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase">Modelo</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Modelo <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                    className={cn(
+                      "w-full px-4 py-2 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 transition-all",
+                      errors.model ? "border-red-500 bg-red-50" : "border-gray-100"
+                    )}
                     value={formData.model}
-                    onChange={(e) => setFormData({...formData, model: e.target.value})}
+                    onChange={(e) => {
+                      setFormData({...formData, model: e.target.value});
+                      if (errors.model) setErrors({...errors, model: null});
+                    }}
+                    placeholder="Ex: Corolla"
                   />
+                  {errors.model && <p className="text-[10px] text-red-500 font-bold">{errors.model}</p>}
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase">Matrícula</label>
+                <label className="text-xs font-bold text-gray-400 uppercase">Matrícula <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-mono"
+                  className={cn(
+                    "w-full px-4 py-2 bg-gray-50 border rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-mono transition-all",
+                    errors.plate ? "border-red-500 bg-red-50" : "border-gray-100"
+                  )}
                   value={formData.plate}
-                  onChange={(e) => setFormData({...formData, plate: e.target.value})}
+                  onChange={(e) => {
+                    setFormData({...formData, plate: e.target.value});
+                    if (errors.plate) setErrors({...errors, plate: null});
+                  }}
+                  placeholder="AA-00-AA"
                 />
+                {errors.plate && <p className="text-[10px] text-red-500 font-bold">{errors.plate}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-400 uppercase">Motorista Associado</label>
@@ -408,6 +479,16 @@ export default function Vehicles() {
             </div>
           </div>
         </div>
+      )}
+      {selectedVehicle && (
+        <VehicleDetails 
+          vehicle={selectedVehicle}
+          onClose={() => setSelectedVehicle(null)}
+          onUpdate={(updated) => {
+            updateVehicle(updated.id, updated);
+            setSelectedVehicle(null);
+          }}
+        />
       )}
     </div>
   );
