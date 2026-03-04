@@ -37,3 +37,21 @@ export function getUberPeriod(date: Date = new Date(), offsetWeeks: number = -1)
   
   return `${formatDate(monday)} - ${formatDate(nextMonday)}`;
 }
+
+export function isValidNIF(nif: string): boolean {
+  const nifStr = nif.replace(/\D/g, '');
+  if (nifStr.length !== 9) return false;
+
+  const firstDigit = parseInt(nifStr.charAt(0));
+  if (![1, 2, 3, 5, 6, 8, 9].includes(firstDigit)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 8; i++) {
+    sum += parseInt(nifStr.charAt(i)) * (9 - i);
+  }
+
+  const expectedCheckDigit = 11 - (sum % 11);
+  const checkDigit = expectedCheckDigit >= 10 ? 0 : expectedCheckDigit;
+
+  return checkDigit === parseInt(nifStr.charAt(8));
+}
