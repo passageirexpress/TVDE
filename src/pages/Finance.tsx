@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { 
   Euro, 
   ArrowUpRight, 
@@ -339,54 +340,72 @@ export default function Finance() {
       complete: (results) => {
         const data = results.data as any[];
         const newPayments: any[] = [];
-
         const unknownDrivers: string[] = [];
+        const errors: string[] = [];
 
         data.forEach((row, index) => {
+          // Skip empty rows or invalid data
+          if (!row || Object.keys(row).length < 2) return;
+
           let driverName = '';
           let gross = 0;
           let net = 0;
 
-          if (importType === 'bolt') {
-            driverName = row['Motorista'] || row['Driver'] || '';
-            gross = parseFloat(row['Ganhos brutos (total)|€']?.replace(',', '.') || row['Gross earnings|€']?.replace(',', '.') || '0');
-            net = parseFloat(row['Ganhos líquidos|€']?.replace(',', '.') || row['Net earnings|€']?.replace(',', '.') || '0');
-          } else {
-            // Uber
-            const firstName = row['Nome próprio do motorista'] || row['Driver First Name'] || '';
-            const lastName = row['Apelido do motorista'] || row['Driver Last Name'] || '';
-            driverName = `${firstName} ${lastName}`.trim();
-            gross = parseFloat(row['Pago a si : Os seus rendimentos : Tarifa']?.replace(',', '.') || row['Your earnings : Fare']?.replace(',', '.') || '0');
-            net = parseFloat(row['Pago a si']?.replace(',', '.') || row['Net Payout']?.replace(',', '.') || '0');
-          }
-
-          if (driverName && (gross > 0 || net !== 0)) {
-            // Find driver by multiple criteria
-            const driver = drivers.find(d => {
-              const matchesName = d.full_name.toLowerCase() === driverName.toLowerCase();
-              const matchesEmail = row['Email'] === d.email || row['E-mail'] === d.email;
-              const matchesUberUUID = importType === 'uber' && (row['Driver UUID'] === d.uber_uuid || row['UUID'] === d.uber_uuid);
-              const matchesBoltID = importType === 'bolt' && (row['Driver ID'] === d.bolt_id || row['ID'] === d.bolt_id);
-              return matchesName || matchesEmail || matchesUberUUID || matchesBoltID;
-            });
-
-            if (!driver && !unknownDrivers.includes(driverName)) {
-              unknownDrivers.push(driverName);
+          try {
+            if (importType === 'bolt') {
+              driverName = row['Motorista'] || row['Driver'] || '';
+              const grossStr = row['Ganhos brutos (total)|€'] || row['Gross earnings|€'] || '0';
+              const netStr = row['Ganhos líquidos|€'] || row['Net earnings|€'] || '0';
+              gross = parseFloat(grossStr.toString().replace(',', '.'));
+              net = parseFloat(netStr.toString().replace(',', '.'));
+            } else {
+              // Uber
+              const firstName = row['Nome próprio do motorista'] || row['Driver First Name'] || '';
+              const lastName = row['Apelido do motorista'] || row['Driver Last Name'] || '';
+              driverName = `${firstName} ${lastName}`.trim();
+              const grossStr = row['Pago a si : Os seus rendimentos : Tarifa'] || row['Your earnings : Fare'] || '0';
+              const netStr = row['Pago a si'] || row['Net Payout'] || '0';
+              gross = parseFloat(grossStr.toString().replace(',', '.'));
+              net = parseFloat(netStr.toString().replace(',', '.'));
             }
 
-            const calculatedNet = calculateNet(driver?.id || '', gross || net);
-            newPayments.push({
-              id: `import-${importType}-${Date.now()}-${index}`,
-              driver: driver?.full_name || driverName,
-              driver_id: driver?.id,
-              period: getUberPeriod(),
-              gross: gross || net,
-              net: calculatedNet,
-              status: 'pending',
-              date: new Date().toISOString().split('T')[0]
-            });
+            if (isNaN(gross)) gross = 0;
+            if (isNaN(net)) net = 0;
+
+            if (driverName && (gross > 0 || net !== 0)) {
+              // Find driver by multiple criteria
+              const driver = drivers.find(d => {
+                const matchesName = d.full_name.toLowerCase() === driverName.toLowerCase();
+                const matchesEmail = row['Email'] === d.email || row['E-mail'] === d.email;
+                const matchesUberUUID = importType === 'uber' && (row['Driver UUID'] === d.uber_uuid || row['UUID'] === d.uber_uuid);
+                const matchesBoltID = importType === 'bolt' && (row['Driver ID'] === d.bolt_id || row['ID'] === d.bolt_id);
+                return matchesName || matchesEmail || matchesUberUUID || matchesBoltID;
+              });
+
+              if (!driver && !unknownDrivers.includes(driverName)) {
+                unknownDrivers.push(driverName);
+              }
+
+              const calculatedNet = calculateNet(driver?.id || '', gross || net);
+              newPayments.push({
+                id: `import-${importType}-${Date.now()}-${index}`,
+                driver: driver?.full_name || driverName,
+                driver_id: driver?.id,
+                period: getUberPeriod(),
+                gross: gross || net,
+                net: calculatedNet,
+                status: 'pending',
+                date: new Date().toISOString().split('T')[0]
+              });
+            }
+          } catch (err) {
+            errors.push(`Erro na linha ${index + 2}: Formato de número inválido.`);
           }
         });
+
+        if (errors.length > 0) {
+          alert(`Aviso: Encontrados ${errors.length} erros durante a importação. Algumas linhas podem ter sido ignoradas.\n\nExemplo: ${errors[0]}`);
+        }
 
         if (newPayments.length > 0) {
           setPayments([...newPayments, ...payments]);
@@ -451,18 +470,96 @@ export default function Finance() {
     });
   };
 
-  const stats = {
-    totalGross: payments.reduce((acc, p) => acc + p.gross, 0),
-    totalNet: payments.reduce((acc, p) => acc + p.net, 0),
-    totalCommission: payments.reduce((acc, p) => acc + (p.gross - p.net), 0),
-    pendingCount: payments.filter(p => p.status === 'pending').length
-  };
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  const filteredPayments = payments.filter(p => {
-    const matchesSearch = p.driver.toLowerCase().includes(searchTerm.toLowerCase());
-    if (activeTab === 'pending') return matchesSearch && p.status === 'pending';
-    if (activeTab === 'history') return matchesSearch && p.status === 'paid';
-    return matchesSearch;
+  // Indexing payments for optimized search and filtering
+  const { paymentsByDriver, paymentsByPeriod, uniquePeriods } = useMemo(() => {
+    const byDriver = new Map<string, typeof payments>();
+    const byPeriod = new Map<string, typeof payments>();
+    const periods = new Set<string>();
+
+    payments.forEach(p => {
+      const driverName = (p.driver || drivers.find(d => d.id === p.driver_id)?.full_name || '').toLowerCase();
+      const period = p.period || `${p.period_start} - ${p.period_end}`;
+
+      // Index by driver
+      if (!byDriver.has(driverName)) {
+        byDriver.set(driverName, []);
+      }
+      byDriver.get(driverName)!.push(p);
+
+      // Index by period
+      if (!byPeriod.has(period)) {
+        byPeriod.set(period, []);
+      }
+      byPeriod.get(period)!.push(p);
+      periods.add(period);
+    });
+
+    return { 
+      paymentsByDriver: byDriver, 
+      paymentsByPeriod: byPeriod,
+      uniquePeriods: Array.from(periods).sort((a, b) => b.localeCompare(a))
+    };
+  }, [payments, drivers]);
+
+  const filteredPayments = useMemo(() => {
+    let result = payments;
+
+    // Filter by period using index (O(1) lookup if specific period)
+    if (selectedPeriod !== 'all') {
+      result = paymentsByPeriod.get(selectedPeriod) || [];
+    }
+
+    // Filter by driver using index keys
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchedDrivers = Array.from(paymentsByDriver.keys()).filter(name => name.includes(searchLower));
+      
+      if (selectedPeriod !== 'all') {
+         result = result.filter(p => {
+           const driverName = (p.driver || drivers.find(d => d.id === p.driver_id)?.full_name || '').toLowerCase();
+           return matchedDrivers.includes(driverName);
+         });
+      } else {
+         result = matchedDrivers.flatMap(name => paymentsByDriver.get(name) || []);
+      }
+    }
+
+    // Filter by date range
+    if (startDate && endDate) {
+      const start = new Date(startDate).getTime();
+      const end = new Date(endDate).getTime();
+      result = result.filter(p => {
+        const pDate = new Date(p.date || p.payment_date || '').getTime();
+        return pDate >= start && pDate <= end;
+      });
+    }
+
+    // Filter by tab status
+    if (activeTab === 'pending') {
+      result = result.filter(p => p.status === 'pending');
+    } else if (activeTab === 'history') {
+      result = result.filter(p => p.status === 'paid');
+    }
+
+    return result;
+  }, [payments, paymentsByDriver, paymentsByPeriod, searchTerm, selectedPeriod, activeTab, drivers, startDate, endDate]);
+
+  const stats = useMemo(() => ({
+    totalGross: filteredPayments.reduce((acc, p) => acc + p.gross, 0),
+    totalNet: filteredPayments.reduce((acc, p) => acc + p.net, 0),
+    totalCommission: filteredPayments.reduce((acc, p) => acc + (p.gross - p.net), 0),
+    pendingCount: filteredPayments.filter(p => p.status === 'pending').length
+  }), [filteredPayments]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: filteredPayments.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 73, // approximate row height
+    overscan: 5,
   });
 
   return (
@@ -746,13 +843,34 @@ export default function Finance() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button 
-              onClick={() => alert('Filtro de período em breve...')}
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
-            >
-              <Filter className="w-4 h-4" />
-              Período
-            </button>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="pl-10 pr-8 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sidebar/10 appearance-none cursor-pointer"
+              >
+                <option value="all">Todos os Períodos</option>
+                {uniquePeriods.map(period => (
+                  <option key={period} value={period}>{period}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sidebar/10"
+              />
+              <span className="text-gray-400">-</span>
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sidebar/10"
+              />
+            </div>
             {activeTab === 'pending' && filteredPayments.length > 0 && (
               <button 
                 onClick={() => {
@@ -770,31 +888,49 @@ export default function Finance() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50/50">
-                <th className="data-grid-header">Motorista</th>
-                <th className="data-grid-header">Período</th>
-                <th className="data-grid-header">Receita Bruta</th>
-                <th className="data-grid-header">Taxas Plataforma</th>
-                <th className="data-grid-header">Valor Líquido</th>
-                <th className="data-grid-header">Status</th>
-                <th className="data-grid-header text-right">Ações</th>
+        <div 
+          ref={parentRef} 
+          className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+        >
+          <table className="w-full text-left relative">
+            <thead className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm shadow-sm">
+              <tr className="flex w-full">
+                <th className="data-grid-header w-[20%]">Motorista</th>
+                <th className="data-grid-header w-[15%]">Período</th>
+                <th className="data-grid-header w-[15%]">Receita Bruta</th>
+                <th className="data-grid-header w-[15%]">Taxas Plataforma</th>
+                <th className="data-grid-header w-[15%]">Valor Líquido</th>
+                <th className="data-grid-header w-[10%]">Status</th>
+                <th className="data-grid-header text-right w-[10%]">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody 
+              className="divide-y divide-gray-50"
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                position: 'relative',
+              }}
+            >
               {filteredPayments.length > 0 ? (
-                filteredPayments.map((p) => (
-                  <tr key={p.id} className="data-grid-row">
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-bold">{p.driver || drivers.find(d => d.id === p.driver_id)?.full_name}</p>
+                rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const p = filteredPayments[virtualRow.index];
+                  return (
+                  <tr 
+                    key={p.id} 
+                    className="data-grid-row absolute w-full flex items-center"
+                    style={{
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <td className="px-4 py-4 w-[20%]">
+                      <p className="text-sm font-bold truncate">{p.driver || drivers.find(d => d.id === p.driver_id)?.full_name}</p>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">{p.period || `${p.period_start} - ${p.period_end}`}</td>
-                    <td className="px-4 py-4 text-sm font-medium">{formatCurrency(p.gross_revenue || p.gross || 0)}</td>
-                    <td className="px-4 py-4 text-sm text-red-500">-{formatCurrency((p.gross_revenue || p.gross || 0) - (p.net_amount || p.net || 0))}</td>
-                    <td className="px-4 py-4 text-sm font-bold text-emerald-600">{formatCurrency(p.net_amount || p.net || 0)}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-sm text-gray-600 w-[15%] truncate">{p.period || `${p.period_start} - ${p.period_end}`}</td>
+                    <td className="px-4 py-4 text-sm font-medium w-[15%]">{formatCurrency(p.gross_revenue || p.gross || 0)}</td>
+                    <td className="px-4 py-4 text-sm text-red-500 w-[15%]">-{formatCurrency((p.gross_revenue || p.gross || 0) - (p.net_amount || p.net || 0))}</td>
+                    <td className="px-4 py-4 text-sm font-bold text-emerald-600 w-[15%]">{formatCurrency(p.net_amount || p.net || 0)}</td>
+                    <td className="px-4 py-4 w-[10%]">
                       <div className="flex flex-col gap-1">
                         {getStatusBadge(p.status)}
                         {(p.status === 'paid' || p.status === 'processing') && (
@@ -807,7 +943,7 @@ export default function Finance() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-4 py-4 text-right w-[10%]">
                       <div className="flex items-center justify-end gap-2">
                         {p.status === 'pending' && (
                           <button 
@@ -845,11 +981,11 @@ export default function Finance() {
                       </div>
                     </td>
                   </tr>
-                ))
+                )})
               ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">
-                    Motorista não encontrado no sistema.
+                <tr className="absolute w-full flex">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic w-full">
+                    Nenhum pagamento encontrado.
                   </td>
                 </tr>
               )}

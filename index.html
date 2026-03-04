@@ -6,6 +6,16 @@
     <title>My Google AI Studio App</title>
   </head>
   <body>
+    <script>
+      // Prevent "Cannot set property fetch of #<Window> which has only a getter" error
+      // caused by some polyfills (like formdata-polyfill) trying to override fetch
+      const originalFetch = window.fetch;
+      Object.defineProperty(window, "fetch", {
+        configurable: true,
+        writable: true,
+        value: originalFetch
+      });
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

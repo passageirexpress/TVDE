@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 // Initialize Supabase Admin client
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 const supabaseAdmin = (supabaseUrl && supabaseServiceKey) 
   ? createClient(supabaseUrl, supabaseServiceKey, {
@@ -24,7 +25,12 @@ const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
         persistSession: false
       }
     })
-  : null;
+  : (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }) : null;
 
 // Viva Wallet Integration Logic
 async function getVivaAccessToken() {

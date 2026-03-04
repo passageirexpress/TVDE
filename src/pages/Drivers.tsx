@@ -1,9 +1,10 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Plus, Search, Filter, MoreHorizontal, UserCheck, UserX, FileText, Download, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, UserCheck, UserX, FileText, Download, ChevronLeft, ChevronRight, AlertCircle, FileSignature } from 'lucide-react';
 // @ts-ignore
 import { FixedSizeList as List } from 'react-window';
 import { cn, formatPercent, formatCurrency } from '../lib/utils';
 import DriverDetails from '../components/DriverDetails';
+import DriverContractModal from '../components/DriverContractModal';
 import { Driver } from '../types';
 import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -11,12 +12,18 @@ import { useAuthStore } from '../store/useAuthStore';
 const ITEMS_PER_PAGE = 20;
 
 export default function Drivers() {
-  const { drivers, addDriver, updateDriver, createUserAuth } = useDataStore();
+  const { drivers, companies, addDriver, updateDriver, createUserAuth } = useDataStore();
   const currentUser = useAuthStore(state => state.user);
+  const currentCompany = useMemo(() => {
+    return companies.find(c => c.id === currentUser?.company_id) || null;
+  }, [companies, currentUser]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'inactive'>('all');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [contractDriver, setContractDriver] = useState<Driver | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [newDriver, setNewDriver] = useState<Partial<Driver>>({
@@ -203,6 +210,19 @@ export default function Drivers() {
                   </div>
                 </div>
               </div>
+            </div>
+            <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContractDriver(driver);
+                  setShowContractModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
+              >
+                <FileSignature className="w-4 h-4" />
+                Gerar Contrato TVDE
+              </button>
             </div>
           </div>
         )}
@@ -433,6 +453,17 @@ export default function Drivers() {
           onClose={() => setSelectedDriver(null)} 
           onUpdate={(updated) => {
             updateDriver(updated.id, updated);
+          }}
+        />
+      )}
+
+      {showContractModal && contractDriver && (
+        <DriverContractModal
+          driver={contractDriver}
+          company={currentCompany}
+          onClose={() => {
+            setShowContractModal(false);
+            setContractDriver(null);
           }}
         />
       )}
