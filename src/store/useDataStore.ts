@@ -158,7 +158,6 @@ const initialUsers: User[] = [
     full_name: 'Admin Fleet',
     email: 'admin@tvdefleet.com',
     role: 'admin',
-    password: '1234',
     permissions: ['all']
   }
 ];
@@ -231,7 +230,7 @@ export const useDataStore = create<DataState>()(
           let usersQuery = supabase.from('users').select('*');
           let paymentsQuery = supabase.from('payments').select('*');
           let earningImportsQuery = supabase.from('earning_imports').select('*');
-          let settingsQuery = supabase.from('settings').select('*');
+          let settingsQuery = supabase.from('settings').select('id, company_id, name, nif, address, email, iban, bolt_client_id, uber_client_id, created_at, updated_at');
           let companiesQuery = supabase.from('companies').select('*');
 
           if (!isMaster && companyId) {
@@ -440,27 +439,11 @@ export const useDataStore = create<DataState>()(
         const state = get();
         state.fetchFromSupabase();
         
-        const needsPasswordUpdate = state.users.some(u => u.password === 'admin') || 
-                                   state.drivers.some(d => d.password === 'password123');
-        
         const needsRehydration = state.users.length === 0 || state.drivers.length === 0;
         
-        if (!needsPasswordUpdate && !needsRehydration) {
+        if (!needsRehydration) {
           return;
         }
-
-        const updatedUsers = needsPasswordUpdate 
-          ? state.users.map(u => u.password === 'admin' ? { ...u, password: '1234' } : u)
-          : state.users;
-          
-        const updatedDrivers = needsPasswordUpdate
-          ? state.drivers.map(d => d.password === 'password123' ? { ...d, password: '1234' } : d)
-          : state.drivers;
-
-        set({
-          users: updatedUsers,
-          drivers: updatedDrivers
-        });
       },
 
       // Notifications

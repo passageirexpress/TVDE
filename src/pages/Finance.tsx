@@ -54,6 +54,7 @@ export default function Finance() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingUber, setIsSyncingUber] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('all');
 
   const handleSyncUber = async () => {
     setIsSyncingUber(true);

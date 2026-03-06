@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Zap, ArrowRight, Building2, Mail, Lock, User, Hash, Loader2, CheckCircle2 } from 'lucide-react';
+import { Zap, ArrowRight, Building2, Mail, Lock, User, Hash, Loader2, CheckCircle2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, isValidNIF } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
+import VivaPaymentForm from '../components/VivaPaymentForm';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -11,6 +12,9 @@ export default function Register() {
   const selectedPlan = searchParams.get('plan') || 'free';
   const [loading, setLoading] = useState(false);
   const { addCompany, addUser } = useDataStore();
+  const [orderCode, setOrderCode] = useState<string | null>(null);
+  const [registeredCompany, setRegisteredCompany] = useState<any>(null);
+  const [showPayment, setShowPayment] = useState(false);
   const [formData, setFormData] = useState({
     company_name: '',
     company_nif: '',
@@ -83,8 +87,12 @@ export default function Register() {
       if (!response.ok) throw new Error(result.error || 'Erro ao registar empresa');
 
       if (result.checkoutUrl) {
-        alert('Empresa registada com sucesso! Você será redirecionado para o pagamento.');
-        window.location.href = result.checkoutUrl;
+        // Extract orderCode from checkoutUrl if possible, or we might need it from the backend
+        // Actually, let's assume the backend can return the orderCode directly
+        // I'll update the backend to return orderCode too.
+        setRegisteredCompany(result.company);
+        setOrderCode(result.orderCode || result.checkoutUrl.split('ref=')[1]);
+        setShowPayment(true);
       } else {
         alert('Empresa registada com sucesso! Por favor, faça login.');
         navigate('/login');
@@ -263,6 +271,27 @@ export default function Register() {
           </p>
         </div>
       </div>
+      {/* Payment Modal */}
+      {showPayment && orderCode && registeredCompany && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="animate-in zoom-in-95 duration-300 w-full max-w-md">
+            <VivaPaymentForm 
+              amount={formData.plan === 'pro' ? 49.90 : 99.90}
+              orderCode={orderCode}
+              companyId={registeredCompany.id}
+              planId={formData.plan}
+              onSuccess={() => {
+                alert('Pagamento confirmado! Bem-vindo ao TVDE Fleet.');
+                navigate('/login');
+              }}
+              onCancel={() => {
+                alert('O seu registo foi concluído, mas o plano está pendente de pagamento. Pode pagar mais tarde na secção de Assinaturas.');
+                navigate('/login');
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

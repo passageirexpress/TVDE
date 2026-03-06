@@ -156,7 +156,7 @@ export default function Settings() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
                   value={settings.bolt_client_secret || ''}
                   onChange={e => setSettings({...settings, bolt_client_secret: e.target.value})}
-                  placeholder="••••••••••••••••"
+                  placeholder={storeSettings.bolt_client_id ? "•••••••••••••••• (Já configurado)" : "Insira o Client Secret da Bolt"}
                 />
               </div>
             </div>
@@ -195,7 +195,7 @@ export default function Settings() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
                   value={settings.uber_client_secret || ''}
                   onChange={e => setSettings({...settings, uber_client_secret: e.target.value})}
-                  placeholder="••••••••••••••••"
+                  placeholder={storeSettings.uber_client_id ? "•••••••••••••••• (Já configurado)" : "Insira o Client Secret da Uber"}
                 />
               </div>
             </div>

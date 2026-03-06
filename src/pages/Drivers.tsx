@@ -145,7 +145,6 @@ export default function Drivers() {
           </div>
           <div className="flex-1 text-sm font-medium text-gray-600 px-2">{driver.nif}</div>
           <div className="flex-1 text-sm text-gray-600 truncate px-2 hidden md:block">{driver.email}</div>
-          <div className="flex-1 text-sm text-gray-600 px-2 hidden lg:block">{driver.phone}</div>
           <div className="flex-1 px-2">
             <span className={cn(
               "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase",
@@ -165,7 +164,13 @@ export default function Drivers() {
               {driver.commission_type === 'variable' ? `${driver.commission_value}%` : formatCurrency(driver.commission_value)}
             </span>
           </div>
-          <div className="flex-1 text-right">
+          <div className="w-24 px-2 hidden lg:block text-center">
+            <span className="text-xs font-bold text-gray-900">{driver.rating_uber || '0.0'} ★</span>
+          </div>
+          <div className="w-24 px-2 hidden lg:block text-center">
+            <span className="text-xs font-bold text-gray-900">{driver.rating_bolt || '0.0'} ★</span>
+          </div>
+          <div className="w-20 text-right">
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -420,11 +425,12 @@ export default function Drivers() {
             <div className="flex-[2] text-[10px] font-bold uppercase text-gray-400 tracking-wider">Nome</div>
             <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2">NIF</div>
             <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2 hidden md:block">Email</div>
-            <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2 hidden lg:block">Telefone</div>
             <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2">Status</div>
             <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2 hidden xl:block">Tipo Comissão</div>
             <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2 hidden xl:block">Valor</div>
-            <div className="flex-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider text-right">Ações</div>
+            <div className="w-24 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2 hidden lg:block text-center">Rating Uber</div>
+            <div className="w-24 text-[10px] font-bold uppercase text-gray-400 tracking-wider px-2 hidden lg:block text-center">Rating Bolt</div>
+            <div className="w-20 text-[10px] font-bold uppercase text-gray-400 tracking-wider text-right">Ações</div>
           </div>
           
           {filteredDrivers.length > 0 ? (

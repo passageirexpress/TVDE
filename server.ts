@@ -152,6 +152,59 @@ async function startServer() {
     }
   });
 
+  app.post("/api/viva/process-native", async (req, res) => {
+    const { orderCode, card, companyId, planId } = req.body;
+
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin not configured" });
+
+    try {
+      const accessToken = await getVivaAccessToken();
+      
+      // 1. Process the transaction using Native Checkout API
+      // Note: In a real production environment, you should use card tokenization 
+      // to avoid handling raw card data on your server (PCI compliance).
+      const response = await axios.post("https://api.vivawallet.com/checkout/v2/transactions", {
+        orderCode,
+        card
+      }, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const transaction = response.data;
+
+      if (transaction.statusId === 'F') { // F = Finished/Success
+        // 2. Update company plan in Supabase
+        const { error } = await supabaseAdmin
+          .from('companies')
+          .update({ 
+            plan: planId, 
+            subscription_status: 'active',
+            last_payment_date: new Date().toISOString()
+          })
+          .eq('id', companyId);
+
+        if (error) throw error;
+
+        res.json({ success: true, message: "Pagamento processado com sucesso!", transactionId: transaction.transactionId });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: transaction.message || "Falha no processamento do pagamento.",
+          statusId: transaction.statusId
+        });
+      }
+    } catch (error: any) {
+      console.error("Viva Native Process Error:", error.response?.data || error.message);
+      res.status(500).json({ 
+        error: "Erro ao processar pagamento nativo", 
+        details: error.response?.data?.message || error.message 
+      });
+    }
+  });
+
   // Test Email Endpoint (Resend)
   app.post("/api/test-email", async (req, res) => {
     const resendKey = process.env.RESEND_API_KEY;
@@ -356,6 +409,7 @@ async function startServer() {
 
       // 4. Handle Viva Wallet Payment if plan is not free
       let checkoutUrl = null;
+      let orderCode = null;
       if (plan && plan !== 'free') {
         try {
           const amount = plan === 'pro' ? 49.90 : 99.90;
@@ -387,7 +441,8 @@ async function startServer() {
             }
           });
 
-          checkoutUrl = `https://www.vivawallet.com/web/checkout?ref=${orderResponse.data.orderCode}`;
+          orderCode = orderResponse.data.orderCode;
+          checkoutUrl = `https://www.vivawallet.com/web/checkout?ref=${orderCode}`;
           
           // Update company status to incomplete pending payment
           await supabaseAdmin
@@ -403,7 +458,7 @@ async function startServer() {
         }
       }
 
-      res.json({ success: true, company, user: authData.user, checkoutUrl });
+      res.json({ success: true, company, user: authData.user, checkoutUrl, orderCode });
     } catch (error: any) {
       console.error("[REGISTER FATAL ERROR]", error.message);
       res.status(400).json({ error: error.message });
@@ -640,17 +695,21 @@ async function startServer() {
         return res.status(403).json({ error: "Apenas administradores podem atualizar as configurações da empresa." });
       }
 
+      // Prepare data for upsert, only include secrets if they are provided
+      const upsertData: any = {
+        company_id: profile.company_id,
+        bolt_client_id,
+        uber_client_id,
+        updated_at: new Date().toISOString()
+      };
+
+      if (bolt_client_secret) upsertData.bolt_client_secret = bolt_client_secret;
+      if (uber_client_secret) upsertData.uber_client_secret = uber_client_secret;
+
       // Upsert settings for this company
       const { error: upsertError } = await supabaseAdmin
         .from('settings')
-        .upsert({
-          company_id: profile.company_id,
-          bolt_client_id,
-          bolt_client_secret,
-          uber_client_id,
-          uber_client_secret,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'company_id' });
+        .upsert(upsertData, { onConflict: 'company_id' });
 
       if (upsertError) throw upsertError;
 

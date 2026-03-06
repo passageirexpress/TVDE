@@ -17,6 +17,7 @@ import { useDataStore } from '../store/useDataStore';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { Company } from '../types';
+import VivaPaymentForm from '../components/VivaPaymentForm';
 
 export default function Subscription() {
   const user = useAuthStore(state => state.user);
@@ -26,7 +27,9 @@ export default function Subscription() {
   const [orderCode, setOrderCode] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const fetchCompany = async () => {
     if (!user?.company_id) return;
@@ -43,31 +46,6 @@ export default function Subscription() {
   useEffect(() => {
     fetchCompany();
   }, [user]);
-
-  // Polling for payment confirmation if checkout is open
-  useEffect(() => {
-    let interval: any;
-    if (checkoutUrl && orderCode && selectedPlan) {
-      interval = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/viva/verify-payment?orderCode=${orderCode}&companyId=${user?.company_id}&planId=${selectedPlan}`);
-          const data = await res.json();
-          if (data.success) {
-            clearInterval(interval);
-            setCheckoutUrl(null);
-            setOrderCode(null);
-            setPaymentSuccess(true);
-            fetchCompany();
-            // Reset success message after 5 seconds
-            setTimeout(() => setPaymentSuccess(false), 5000);
-          }
-        } catch (err) {
-          console.error("Error verifying payment:", err);
-        }
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [checkoutUrl, orderCode, selectedPlan, user?.company_id]);
 
   const plans = [
     {
@@ -105,6 +83,7 @@ export default function Subscription() {
     
     setIsProcessing(true);
     setSelectedPlan(planId);
+    setSelectedAmount(parseFloat(amount));
     
     try {
       const response = await fetch('/api/viva/create-order', {
@@ -122,7 +101,7 @@ export default function Subscription() {
       const data = await response.json();
       if (data.orderCode) {
         setOrderCode(data.orderCode);
-        setCheckoutUrl(data.checkoutUrl);
+        setShowPaymentForm(true);
       } else {
         alert("Erro ao iniciar checkout. Tente novamente.");
       }
@@ -132,6 +111,15 @@ export default function Subscription() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handlePaymentSuccess = (transactionId: string) => {
+    setShowPaymentForm(false);
+    setOrderCode(null);
+    setPaymentSuccess(true);
+    fetchCompany();
+    // Reset success message after 5 seconds
+    setTimeout(() => setPaymentSuccess(false), 5000);
   };
 
   if (loading) {
@@ -250,42 +238,21 @@ export default function Subscription() {
       </div>
 
       {/* Checkout Modal */}
-      {checkoutUrl && (
+      {showPaymentForm && orderCode && user?.company_id && selectedPlan && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-sidebar/10 rounded-2xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-sidebar" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black tracking-tighter uppercase">Checkout Seguro</h2>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Processado por Viva Wallet</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  setCheckoutUrl(null);
-                  setOrderCode(null);
-                  setSelectedPlan(null);
-                }}
-                className="p-3 hover:bg-slate-50 rounded-full transition-all text-slate-400 hover:text-slate-900"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 bg-slate-50 relative">
-              <iframe 
-                src={checkoutUrl} 
-                className="w-full h-full border-none"
-                title="Viva Wallet Checkout"
-              />
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-slate-200 flex items-center gap-2 shadow-sm">
-                <Loader2 className="w-3 h-3 animate-spin text-sidebar" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Aguardando confirmação de pagamento...</span>
-              </div>
-            </div>
+          <div className="animate-in zoom-in-95 duration-300 w-full max-w-md">
+            <VivaPaymentForm 
+              amount={selectedAmount}
+              orderCode={orderCode}
+              companyId={user.company_id}
+              planId={selectedPlan}
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => {
+                setShowPaymentForm(false);
+                setOrderCode(null);
+                setSelectedPlan(null);
+              }}
+            />
           </div>
         </div>
       )}

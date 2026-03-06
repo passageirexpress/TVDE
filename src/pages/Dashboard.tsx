@@ -458,7 +458,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-bold">Desempenho de Faturamento</h3>
+            <h3 className="text-lg font-bold">Evolução da Receita (Últimos 6 Meses)</h3>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
@@ -472,26 +472,17 @@ export default function Dashboard() {
           </div>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorUber" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorBolt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value) => formatCurrency(Number(value))}
                 />
-                <Area type="monotone" dataKey="uber" stroke="#6366f1" fillOpacity={1} fill="url(#colorUber)" strokeWidth={3} />
-                <Area type="monotone" dataKey="bolt" stroke="#10b981" fillOpacity={1} fill="url(#colorBolt)" strokeWidth={3} />
-              </AreaChart>
+                <Bar dataKey="uber" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="bolt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -536,6 +527,50 @@ export default function Dashboard() {
               </div>
             </div>
           </Link>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-lg font-bold">Pagamentos Pendentes</h3>
+            <Link to="/dashboard/finance" className="text-xs font-bold text-sidebar uppercase tracking-widest hover:underline">
+              Ver Todos
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {payments.filter(p => p.status === 'pending').length > 0 ? (
+              payments
+                .filter(p => p.status === 'pending')
+                .slice(0, 5)
+                .map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-sidebar/20 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-400">
+                        <Euro className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{payment.driver || drivers.find(d => d.id === payment.driver_id)?.full_name}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">{payment.period || 'Período não definido'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-sidebar">{formatCurrency(payment.net_amount || payment.net || 0)}</p>
+                      <Link 
+                        to={`/dashboard/finance`} 
+                        className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-sidebar transition-colors"
+                      >
+                        Detalhes
+                      </Link>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <div className="py-12 text-center">
+                <CheckCircle2 className="w-12 h-12 text-emerald-100 mx-auto mb-4" />
+                <p className="text-sm text-gray-500 font-medium">Todos os pagamentos estão em dia!</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
