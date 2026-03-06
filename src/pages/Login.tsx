@@ -27,7 +27,7 @@ export default function Login() {
     e.preventDefault();
     if (isLoggingIn) return;
 
-    const isPlaceholder = import.meta.env.VITE_SUPABASE_URL?.includes('placeholder') || !import.meta.env.VITE_SUPABASE_URL;
+    const isPlaceholder = false; // Force production mode
     
     setIsLoggingIn(true);
     
@@ -36,23 +36,15 @@ export default function Login() {
       const cleanPassword = password.trim();
 
       // 1. Sign in with Supabase Auth
-      let authResult: any = { data: { session: null }, error: null };
-      
-      if (!isPlaceholder) {
-        authResult = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password: cleanPassword,
-        });
-      } else {
-        console.warn("Supabase is in placeholder mode. Real authentication is disabled.");
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
 
-      const { data, error } = authResult;
-
-      if (error || isPlaceholder || !data.session) {
+      if (error || !data.session) {
         if (error) console.log("Auth Error:", error.message);
         
-        // Fallback for Master Admin and Legacy Users
+        // Fallback for Master Admin
         if (cleanEmail === 'master@tvdefleet.com' && cleanPassword === '1234') {
           console.log("Master Admin Fallback Triggered");
           setUser({
@@ -63,58 +55,6 @@ export default function Login() {
           });
           navigate('/');
           return;
-        }
-
-        if (isPlaceholder) {
-          // Check local store first if in placeholder mode
-          const localUser = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPassword);
-          if (localUser) {
-            setUser(localUser);
-            navigate('/');
-            return;
-          }
-          
-          const localDriver = drivers.find(d => d.email.toLowerCase() === cleanEmail && d.password === cleanPassword);
-          if (localDriver) {
-            setUser({
-              id: localDriver.id,
-              email: localDriver.email,
-              role: 'driver',
-              full_name: localDriver.full_name,
-              company_id: localDriver.company_id
-            });
-            navigate('/');
-            return;
-          }
-
-          throw new Error('O sistema está em modo de demonstração (chaves Supabase não configuradas). Para entrar com uma nova empresa, você deve configurar as chaves VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente. Para testar agora, use master@tvdefleet.com / 1234.');
-        }
-
-        // Check in Users Table (Legacy/Manual Fallback)
-        // Note: This only works for users with plain-text passwords in the DB, 
-        // which we only use for local/demo purposes.
-        try {
-          const { data: adminData } = await supabase
-            .from('users')
-            .select('id, email, role, full_name, company_id, password')
-            .eq('email', cleanEmail)
-            .eq('password', cleanPassword)
-            .maybeSingle();
-
-          if (adminData) {
-            console.log("Database Fallback Triggered (User)");
-            setUser({
-              id: adminData.id,
-              email: adminData.email,
-              role: adminData.role,
-              full_name: adminData.full_name,
-              company_id: adminData.company_id
-            });
-            navigate('/');
-            return;
-          }
-        } catch (dbFallbackError) {
-          console.error("Database fallback failed:", dbFallbackError);
         }
 
         if (error?.message === 'Invalid login credentials') {
@@ -167,10 +107,7 @@ export default function Login() {
   };
 
   const handleResetSystem = () => {
-    if (confirm('Deseja redefinir os dados do sistema? Isso limpará o cache do seu navegador, sairá da conta e restaurará as senhas padrão (1234).')) {
-      localStorage.clear();
-      window.location.reload();
-    }
+    // Removed
   };
 
   return (
@@ -253,12 +190,6 @@ export default function Login() {
         </div>
 
         <div className="text-center mt-8 space-y-4">
-          <button 
-            onClick={handleResetSystem}
-            className="text-xs text-gray-400 hover:text-sidebar transition-colors underline underline-offset-4"
-          >
-            Problemas ao entrar? Redefinir dados do sistema
-          </button>
           <p className="text-sm text-gray-400">
             © 2024 TVDE Fleet Management. Todos os direitos reservados.
           </p>

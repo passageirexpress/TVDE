@@ -1,4 +1,28 @@
 import { Driver, Vehicle, AppNotification, Rental } from '../types';
+import { supabase } from '../lib/supabase';
+
+export const sendEmailNotification = async (to: string, subject: string, message: string, companyName?: string) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    await fetch('/api/notifications/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        message,
+        companyName
+      })
+    });
+  } catch (error) {
+    console.error('Error sending email notification:', error);
+  }
+};
 
 export const checkRentalExpirations = (
   rentals: Rental[],
@@ -32,6 +56,8 @@ export const checkRentalExpirations = (
             date: today.toISOString().split('T')[0],
             read: false
           });
+          // We don't have the admin email here easily, but we can pass it or fetch it.
+          // For now, we'll rely on the store to send the email when addNotification is called.
         }
       } else if (diffDays <= 0) {
         const vehicle = vehicles.find(v => v.id === rental.vehicle_id);

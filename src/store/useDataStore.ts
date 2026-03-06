@@ -4,6 +4,7 @@ import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotificatio
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
+import { sendEmailNotification } from '../services/notificationService';
 
 interface DataState {
   companies: Company[];
@@ -521,7 +522,21 @@ export const useDataStore = create<DataState>()(
       },
 
       // Notifications
-      addNotification: (n) => set((state) => ({ notifications: [n, ...state.notifications] })),
+      addNotification: (n) => {
+        set((state) => ({ notifications: [n, ...state.notifications] }));
+        
+        // Send email notification to admin
+        const state = get();
+        const adminUser = state.users.find(u => u.role === 'admin');
+        if (adminUser && adminUser.email) {
+          sendEmailNotification(
+            adminUser.email,
+            n.title,
+            n.message,
+            state.settings?.name || 'TVDE Fleet'
+          );
+        }
+      },
       markNotificationsAsRead: () => set((state) => ({
         notifications: state.notifications.map(n => ({ ...n, read: true }))
       })),
@@ -619,6 +634,24 @@ export const useDataStore = create<DataState>()(
       addClaim: (claim) => {
         set((state) => ({ claims: [claim, ...state.claims] }));
         get().saveToSupabase('claims', claim);
+
+        // Notify admin about new claim
+        const state = get();
+        const adminUser = state.users.find(u => u.role === 'admin');
+        const vehicle = state.vehicles.find(v => v.id === claim.vehicle_id);
+        const driver = state.drivers.find(d => d.id === claim.driver_id);
+        
+        if (adminUser && adminUser.email) {
+          const title = `Novo Sinistro Reportado: ${vehicle?.plate || 'Veículo Desconhecido'}`;
+          const message = `Um novo sinistro foi reportado.\n\nVeículo: ${vehicle?.plate}\nMotorista: ${driver?.full_name}\nData: ${claim.date}\nDescrição: ${claim.description}\n\nPor favor, verifique o sistema para mais detalhes.`;
+          
+          sendEmailNotification(
+            adminUser.email,
+            title,
+            message,
+            state.settings?.name || 'TVDE Fleet'
+          );
+        }
       },
       updateClaim: (id, updated) => {
         set((state) => {

@@ -84,7 +84,55 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Resend Email Endpoint
+  // Resend Email Endpoint for Notifications
+  app.post("/api/notifications/send", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
+
+    const { to, subject, message, companyName } = req.body;
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (!user) return res.status(401).json({ error: "Sessão inválida" });
+
+      const resend = getResendClient();
+      if (!resend) {
+        return res.status(400).json({ error: "Serviço de email não configurado." });
+      }
+      
+      const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <div style="margin-bottom: 20px;">
+            <h2 style="color: #1a1a1a; margin: 0;">${subject}</h2>
+            <p style="margin: 0; color: #666; font-size: 14px;">Notificação de ${companyName || 'TVDE Fleet'}</p>
+          </div>
+          <div style="padding: 20px; background-color: #f9fafb; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #374151;">
+              ${message.replace(/\n/g, '<br>')}
+            </p>
+          </div>
+          <div style="padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
+            <p>Esta é uma mensagem automática gerada pelo sistema TVDE Fleet.</p>
+          </div>
+        </div>
+      `;
+
+      const data = await resend.emails.send({
+        from: 'TVDE Fleet <onboarding@resend.dev>',
+        to: [to],
+        subject: subject,
+        html: htmlContent,
+      });
+
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("Error sending notification email:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Resend Email Endpoint for Invoices
   app.post("/api/invoices/send", async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
