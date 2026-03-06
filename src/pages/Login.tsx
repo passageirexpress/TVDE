@@ -167,8 +167,8 @@ export default function Login() {
   };
 
   const handleResetSystem = () => {
-    if (confirm('Deseja redefinir os dados do sistema? Isso limpará o cache do seu navegador e restaurará as senhas padrão (1234).')) {
-      localStorage.removeItem('tvde-fleet-data');
+    if (confirm('Deseja redefinir os dados do sistema? Isso limpará o cache do seu navegador, sairá da conta e restaurará as senhas padrão (1234).')) {
+      localStorage.clear();
       window.location.reload();
     }
   };

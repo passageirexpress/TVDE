@@ -9,7 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.log('Supabase initialized with URL:', supabaseUrl);
 }
 
+// Dummy JWT for placeholder mode to avoid 'atob' errors in supabase-js
+const DUMMY_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MTY0OTQwMDAsImV4cCI6MjYxNjQ5NDAwMH0.placeholder-signature';
+
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || DUMMY_JWT
 );
