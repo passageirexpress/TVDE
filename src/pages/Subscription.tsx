@@ -99,15 +99,20 @@ export default function Subscription() {
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Erro ao iniciar checkout.");
+      }
+
       if (data.orderCode) {
         setOrderCode(data.orderCode);
         setShowPaymentForm(true);
       } else {
-        alert("Erro ao iniciar checkout. Tente novamente.");
+        throw new Error("Não foi possível gerar o código da ordem.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Checkout error:", error);
-      alert("Erro de conexão com o servidor.");
+      alert(error.message || "Erro de conexão com o servidor.");
     } finally {
       setIsProcessing(false);
     }

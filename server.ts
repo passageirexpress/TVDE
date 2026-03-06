@@ -38,8 +38,11 @@ async function getVivaAccessToken() {
   const clientSecret = process.env.VIVA_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
+    console.error("[VIVA] Credenciais não configuradas: VIVA_CLIENT_ID ou VIVA_CLIENT_SECRET ausentes.");
     throw new Error("Viva Wallet credentials not configured");
   }
+
+  console.log("[VIVA] Iniciando obtenção de token para Client ID:", clientId.substring(0, 5) + "...");
 
   try {
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -47,6 +50,7 @@ async function getVivaAccessToken() {
     params.append('grant_type', 'client_credentials');
 
     const response = await axios.post("https://accounts.vivawallet.com/connect/token", params, {
+      timeout: 10000,
       headers: {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/x-www-form-urlencoded'
@@ -55,8 +59,9 @@ async function getVivaAccessToken() {
 
     return response.data.access_token;
   } catch (error: any) {
-    console.error("Viva Token Error:", error.response?.data || error.message);
-    throw new Error("Falha ao obter token da Viva Wallet");
+    const errorDetail = error.response?.data || error.message;
+    console.error("Viva Token Error:", JSON.stringify(errorDetail));
+    throw new Error(`Falha ao obter token da Viva Wallet: ${error.message}`);
   }
 }
 
@@ -166,10 +171,16 @@ async function startServer() {
 
   // Viva Wallet Endpoints
   app.post("/api/viva/create-order", async (req, res) => {
+    console.log("[VIVA] Recebida solicitação de criação de ordem:", req.body);
     const { amount, planId, companyId, customerEmail, customerName } = req.body;
+
+    if (!amount || !planId || !companyId) {
+      return res.status(400).json({ error: "Parâmetros ausentes: amount, planId e companyId são obrigatórios." });
+    }
 
     try {
       const accessToken = await getVivaAccessToken();
+      console.log("[VIVA] Token de acesso obtido com sucesso");
       const merchantId = process.env.VIVA_MERCHANT_ID;
       const apiKey = process.env.VIVA_API_KEY;
       const sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
@@ -195,6 +206,7 @@ async function startServer() {
         disableCash: true,
         disableWallet: false
       }, {
+        timeout: 15000,
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -206,8 +218,12 @@ async function startServer() {
         checkoutUrl: `https://www.vivawallet.com/web/checkout?ref=${orderResponse.data.orderCode}`
       });
     } catch (error: any) {
-      console.error("Viva Create Order Error:", error.response?.data || error.message);
-      res.status(500).json({ error: "Erro ao criar ordem de pagamento na Viva Wallet" });
+      const errorDetail = error.response?.data?.errors || error.response?.data || error.message;
+      console.error("Viva Create Order Error:", JSON.stringify(errorDetail));
+      res.status(500).json({ 
+        error: "Erro ao criar ordem de pagamento na Viva Wallet",
+        details: errorDetail
+      });
     }
   });
 
