@@ -28,6 +28,10 @@ import Login from './pages/Login';
 import Landing from './pages/Landing';
 import Register from './pages/Register';
 import Companies from './pages/Companies';
+import Maintenance from './pages/Maintenance';
+import Claims from './pages/Claims';
+import Chat from './pages/Chat';
+import Affiliates from './pages/Affiliates';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import { useAuthStore } from './store/useAuthStore';
@@ -120,6 +124,18 @@ export default function App() {
           <Route path="vehicles" element={
             <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
               <Vehicles />
+            </ProtectedRoute>
+          } />
+          <Route path="maintenance" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Maintenance />
+            </ProtectedRoute>
+          } />
+          <Route path="claims" element={<Claims />} />
+          <Route path="chat" element={<Chat />} />
+          <Route path="affiliates" element={
+            <ProtectedRoute allowedRoles={['master']}>
+              <Affiliates />
             </ProtectedRoute>
           } />
           <Route path="finance" element={

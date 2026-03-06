@@ -13,7 +13,11 @@ import {
   UserCircle,
   BarChart3,
   X,
-  CreditCard
+  CreditCard,
+  Wrench,
+  ShieldAlert,
+  MessageSquare,
+  Share2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -25,6 +29,9 @@ const adminItems = [
   { icon: Car, label: 'Frota', path: '/dashboard/fleet' },
   { icon: Users, label: 'Motoristas', path: '/dashboard/drivers' },
   { icon: Car, label: 'Veículos', path: '/dashboard/vehicles' },
+  { icon: Wrench, label: 'Manutenção', path: '/dashboard/maintenance' },
+  { icon: ShieldAlert, label: 'Sinistros', path: '/dashboard/claims' },
+  { icon: MessageSquare, label: 'Chat Equipa', path: '/dashboard/chat' },
   { icon: Euro, label: 'Financeiro', path: '/dashboard/finance' },
   { icon: FileText, label: 'Despesas', path: '/dashboard/expenses' },
   { icon: Car, label: 'Aluguel', path: '/dashboard/rentals' },
@@ -38,6 +45,7 @@ const adminItems = [
 const masterItems = [
   { icon: LayoutDashboard, label: 'Dashboard Master', path: '/dashboard' },
   { icon: Shield, label: 'Empresas', path: '/dashboard/companies' },
+  { icon: Share2, label: 'Afiliados', path: '/dashboard/affiliates' },
   { icon: Users, label: 'Todos Usuários', path: '/dashboard/users' },
   { icon: CreditCard, label: 'Assinaturas Master', path: '/dashboard/subscription' },
   { icon: Settings, label: 'Configurações Master', path: '/dashboard/settings' },
@@ -45,6 +53,8 @@ const masterItems = [
 
 const driverItems = [
   { icon: LayoutDashboard, label: 'Meus Ganhos', path: '/dashboard/driver-panel' },
+  { icon: MessageSquare, label: 'Chat Suporte', path: '/dashboard/chat' },
+  { icon: ShieldAlert, label: 'Reportar Sinistro', path: '/dashboard/claims' },
   { icon: FileText, label: 'Minhas Despesas', path: '/dashboard/expenses' },
   { icon: Car, label: 'Aluguel de Carros', path: '/dashboard/rentals' },
   { icon: Car, label: 'Meu Veículo', path: '/dashboard/vehicles' },

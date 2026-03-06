@@ -14,7 +14,10 @@ import {
   Clock,
   Upload,
   Loader2,
-  Car
+  Car,
+  Archive,
+  History,
+  Plus
 } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
@@ -26,10 +29,15 @@ interface VehicleDetailsProps {
 }
 
 export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDetailsProps) {
-  const { uploadDocument, drivers } = useDataStore();
+  const { uploadDocument, drivers, maintenances, inventoryItems, addInventoryItem, updateInventoryItem } = useDataStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [showAddInventory, setShowAddInventory] = useState(false);
+  const [newItem, setNewItem] = useState({ name: '', quantity: 1 });
   const [editedVehicle, setEditedVehicle] = useState<any>(vehicle);
+  
+  const vehicleMaintenances = maintenances.filter(m => m.vehicle_id === vehicle.id);
+  const vehicleInventory = inventoryItems.filter(i => i.vehicle_id === vehicle.id);
   const [documents, setDocuments] = useState(vehicle.documents?.length > 0 ? vehicle.documents : [
     { id: 'v1', vehicle_id: vehicle.id, type: 'insurance', label: 'Seguro Automóvel', expiry_date: vehicle.insurance_expiry || '', status: 'pending', url: '#' },
     { id: 'v2', vehicle_id: vehicle.id, type: 'inspection', label: 'Inspeção Periódica (IPO)', expiry_date: vehicle.inspection_expiry || '', status: 'pending', url: '#' },
@@ -276,6 +284,117 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
                       </div>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Inventário do Veículo</h3>
+                  <button 
+                    onClick={() => setShowAddInventory(true)}
+                    className="flex items-center gap-1 text-[10px] font-black text-sidebar uppercase tracking-widest hover:underline"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Adicionar Item
+                  </button>
+                </div>
+                {showAddInventory && (
+                  <div className="mb-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-end gap-4 animate-in slide-in-from-top-2">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">Nome do Item</label>
+                      <input 
+                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none"
+                        placeholder="Ex: Colete Refletor"
+                        value={newItem.name}
+                        onChange={e => setNewItem({...newItem, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="w-24 space-y-1">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">Qtd</label>
+                      <input 
+                        type="number"
+                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none"
+                        value={newItem.quantity}
+                        onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                      />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (!newItem.name) return;
+                        addInventoryItem({
+                          id: crypto.randomUUID(),
+                          vehicle_id: vehicle.id,
+                          name: newItem.name,
+                          quantity: newItem.quantity,
+                          status: 'ok',
+                          last_checked: new Date().toISOString().split('T')[0]
+                        });
+                        setNewItem({ name: '', quantity: 1 });
+                        setShowAddInventory(false);
+                      }}
+                      className="px-4 py-2 bg-sidebar text-white rounded-xl font-bold text-xs"
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {vehicleInventory.length > 0 ? vehicleInventory.map((item) => (
+                    <div key={item.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white rounded-lg text-gray-400 group-hover:text-sidebar transition-colors">
+                          <Archive className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">{item.name}</p>
+                          <p className="text-[10px] text-gray-500">Qtd: {item.quantity}</p>
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        item.status === 'ok' ? "bg-emerald-500" : "bg-amber-500"
+                      )}></div>
+                    </div>
+                  )) : (
+                    <p className="col-span-full text-center text-xs text-gray-400 italic py-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      Nenhum item de inventário registado.
+                    </p>
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Histórico de Manutenção</h3>
+                  <button 
+                    onClick={() => window.location.href = '/dashboard/maintenance'}
+                    className="text-[10px] font-black text-sidebar uppercase tracking-widest hover:underline"
+                  >
+                    Ver Tudo
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {vehicleMaintenances.length > 0 ? vehicleMaintenances.map((m) => (
+                    <div key={m.id} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-gray-50 rounded-xl text-gray-400">
+                          <History className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{m.description}</p>
+                          <p className="text-[10px] text-gray-500 font-medium">{m.date} • {m.mileage.toLocaleString()} km</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-gray-900">{formatCurrency(m.cost)}</p>
+                        <span className="text-[9px] font-bold uppercase text-emerald-600">Concluído</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-center text-xs text-gray-400 italic py-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      Nenhum registo de manutenção encontrado.
+                    </p>
+                  )}
                 </div>
               </section>
             </div>

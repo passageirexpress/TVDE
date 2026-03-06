@@ -18,7 +18,11 @@ import {
   CheckCircle2,
   Receipt,
   AlertCircle,
-  X
+  X,
+  PlusCircle,
+  MessageSquare,
+  ShieldAlert,
+  Archive
 } from 'lucide-react';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
 import { 
@@ -72,7 +76,14 @@ export default function DriverPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [newExpense, setNewExpense] = useState({
+    category: 'fuel',
+    amount: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0]
+  });
   
   const myExpenses = expenses.filter(e => e.driver_id === user?.id && e.status === 'approved');
   const myVehicle = vehicles.find(v => v.current_driver_id === user?.id);
@@ -129,6 +140,33 @@ export default function DriverPanel() {
     if (audioRef.current) {
       audioRef.current.play().catch(e => console.log('Audio play failed:', e));
     }
+  };
+
+  const handleAddExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    
+    const expense = {
+      id: crypto.randomUUID(),
+      company_id: user.company_id || '1',
+      driver_id: user.id,
+      category: newExpense.category as any,
+      amount: parseFloat(newExpense.amount),
+      description: newExpense.description,
+      date: newExpense.date,
+      status: 'pending' as const,
+      receipt_url: ''
+    };
+
+    useDataStore.getState().addExpense(expense);
+    setShowExpenseModal(false);
+    setNewExpense({
+      category: 'fuel',
+      amount: '',
+      description: '',
+      date: new Date().toISOString().split('T')[0]
+    });
+    alert('Despesa enviada para aprovação!');
   };
 
   const filteredHistory = myPayments.filter(item => {
@@ -210,7 +248,15 @@ export default function DriverPanel() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Painel do Motorista</h1>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">Acompanhe seus ganhos diários e histórico de pagamentos.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={() => setShowExpenseModal(true)}
+            className="bg-sidebar text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm"
+          >
+            <PlusCircle className="w-5 h-5" />
+            Submeter Despesa
+          </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
           <div className="flex bg-white rounded-xl p-1 border border-gray-100 shadow-sm overflow-x-auto scrollbar-hide">
             {['all', 'week', 'month', 'custom'].map((f) => (
               <button
@@ -268,6 +314,47 @@ export default function DriverPanel() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Quick Actions Grid for Mobile */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:hidden">
+        <button 
+          onClick={() => window.location.href = '/dashboard/chat'}
+          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+        >
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <MessageSquare className="w-6 h-6" />
+          </div>
+          <span className="text-xs font-bold text-gray-600">Chat Suporte</span>
+        </button>
+        <button 
+          onClick={() => window.location.href = '/dashboard/claims'}
+          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+        >
+          <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <span className="text-xs font-bold text-gray-600">Sinistros</span>
+        </button>
+        <button 
+          onClick={() => setShowExpenseModal(true)}
+          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+        >
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+            <Receipt className="w-6 h-6" />
+          </div>
+          <span className="text-xs font-bold text-gray-600">Despesas</span>
+        </button>
+        <button 
+          onClick={() => setShowVehicleModal(true)}
+          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+        >
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <Car className="w-6 h-6" />
+          </div>
+          <span className="text-xs font-bold text-gray-600">Meu Carro</span>
+        </button>
+      </div>
 
       {/* Balance Summary Section */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -704,6 +791,82 @@ export default function DriverPanel() {
           </div>
         </div>
       </div>
+
+      {showExpenseModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold">Submeter Despesa</h2>
+              <button onClick={() => setShowExpenseModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleAddExpense} className="p-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Categoria</label>
+                <select 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-bold"
+                  value={newExpense.category}
+                  onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
+                >
+                  <option value="fuel">Combustível</option>
+                  <option value="toll">Portagens</option>
+                  <option value="maintenance">Manutenção</option>
+                  <option value="cleaning">Limpeza</option>
+                  <option value="other">Outro</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Valor (€)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-bold"
+                  placeholder="0.00"
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Data</label>
+                <input 
+                  type="date" 
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-bold"
+                  value={newExpense.date}
+                  onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Descrição</label>
+                <textarea 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-medium text-sm h-24"
+                  placeholder="Ex: Abastecimento Galp..."
+                  value={newExpense.description}
+                  onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Comprovativo (Foto/PDF)</label>
+                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-all">
+                  <div className="flex flex-col items-center justify-center">
+                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
+                    <p className="text-[10px] text-gray-500 font-bold">Carregar Fatura</p>
+                  </div>
+                  <input type="file" className="hidden" accept="image/*,.pdf" />
+                </label>
+              </div>
+              <button 
+                type="submit"
+                className="w-full py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20 mt-4"
+              >
+                Enviar para Aprovação
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showVehicleModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">

@@ -34,6 +34,8 @@ interface ImportedData {
   gross_revenue?: number;
   net_amount?: number;
   commission_fee?: number;
+  payment_date?: string;
+  date?: string;
 }
 
 const initialPayments = [
@@ -55,6 +57,50 @@ export default function Finance() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingUber, setIsSyncingUber] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [isSendingInvoice, setIsSendingInvoice] = useState(false);
+
+  const handleSendInvoice = async (payment: ImportedData) => {
+    setIsSendingInvoice(true);
+    try {
+      const driver = drivers.find(d => d.id === payment.driver_id || d.full_name === payment.driver);
+      if (!driver || !driver.email) {
+        alert('Motorista não encontrado ou sem email configurado.');
+        return;
+      }
+
+      const response = await fetch('/api/invoices/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: driver.email,
+          companyName: 'Sua Empresa TVDE', // This should ideally come from settings
+          clientName: driver.full_name,
+          invoiceNumber: payment.id.split('-').pop() || '001',
+          amount: payment.net_amount || payment.net || 0,
+          items: [
+            { description: `Ganhos TVDE - Período ${payment.period}`, amount: payment.net_amount || payment.net || 0 }
+          ],
+          dueDate: payment.payment_date || payment.date || new Date().toISOString().split('T')[0]
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha ao enviar fatura');
+      
+      alert('Fatura enviada com sucesso para ' + driver.email);
+      addNotification({
+        id: crypto.randomUUID(),
+        title: 'Fatura Enviada',
+        message: `A fatura do motorista ${driver.full_name} foi enviada por email.`,
+        date: new Date().toISOString().split('T')[0],
+        read: false
+      });
+    } catch (error: any) {
+      console.error('Erro ao enviar fatura:', error);
+      alert('Erro ao enviar fatura: ' + error.message);
+    } finally {
+      setIsSendingInvoice(false);
+    }
+  };
 
   const handleSyncUber = async () => {
     setIsSyncingUber(true);
@@ -128,7 +174,10 @@ export default function Finance() {
               insurance_expiry: '',
               inspection_expiry: '',
               policy_number: '',
-              documents: []
+              documents: [],
+              maintenance_history: [],
+              claims: [],
+              inventory: []
             });
           }
         });
@@ -242,7 +291,10 @@ export default function Finance() {
               insurance_expiry: '',
               inspection_expiry: '',
               policy_number: '',
-              documents: []
+              documents: [],
+              maintenance_history: [],
+              claims: [],
+              inventory: []
             });
           }
         });
@@ -1050,16 +1102,29 @@ export default function Finance() {
                 })()}
               </div>
 
-              <div className="pt-6 border-t border-gray-100">
+              <div className="pt-6 border-t border-gray-100 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold">Total Líquido</span>
                   <span className="text-2xl font-black text-emerald-600">{formatCurrency(showDetailsModal.net)}</span>
                 </div>
+                
+                <button 
+                  onClick={() => handleSendInvoice(showDetailsModal)}
+                  disabled={isSendingInvoice}
+                  className="w-full py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-sidebar/20 disabled:opacity-50"
+                >
+                  {isSendingInvoice ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <FileUp className="w-5 h-5" />
+                  )}
+                  Enviar Fatura por Email
+                </button>
               </div>
 
               <button 
                 onClick={() => setShowDetailsModal(null)}
-                className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all mt-4"
+                className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
               >
                 Fechar
               </button>

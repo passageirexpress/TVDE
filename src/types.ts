@@ -68,6 +68,9 @@ export interface Vehicle {
   status: 'active' | 'maintenance' | 'inactive';
   current_driver_id?: string;
   documents: VehicleDocument[];
+  maintenance_history: Maintenance[];
+  claims: Claim[];
+  inventory: InventoryItem[];
   history?: {
     date: string;
     type: string;
@@ -178,4 +181,66 @@ export interface AppNotification {
   message: string;
   date: string;
   read: boolean;
+}
+
+export interface Maintenance {
+  id: string;
+  vehicle_id: string;
+  date: string;
+  type: 'oil_change' | 'tires' | 'brakes' | 'general' | 'other';
+  description: string;
+  cost: number;
+  mileage: number;
+  next_maintenance_mileage?: number;
+  receipt_url?: string;
+}
+
+export interface Claim {
+  id: string;
+  vehicle_id: string;
+  driver_id: string;
+  date: string;
+  description: string;
+  location: string;
+  status: 'reported' | 'in_progress' | 'resolved' | 'rejected';
+  photos: string[];
+  report_url?: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  vehicle_id: string;
+  name: string;
+  quantity: number;
+  last_checked: string;
+  status: 'ok' | 'missing' | 'damaged';
+}
+
+export interface ChatMessage {
+  id: string;
+  company_id: string;
+  sender_id: string;
+  receiver_id?: string; // If null, it's a broadcast or group chat
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
+export interface Contract {
+  id: string;
+  company_id: string;
+  driver_id: string;
+  type: 'tvde_contract' | 'rental_agreement';
+  status: 'draft' | 'sent' | 'signed' | 'expired';
+  signed_at?: string;
+  document_url: string;
+}
+
+export interface Affiliate {
+  id: string;
+  referrer_company_id: string;
+  referred_company_id: string;
+  status: 'pending' | 'active' | 'paid';
+  commission_amount: number;
+  created_at: string;
 }

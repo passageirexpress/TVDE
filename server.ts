@@ -60,11 +60,109 @@ async function getVivaAccessToken() {
   }
 }
 
+// Resend Email Integration
+let resendClient: Resend | null = null;
+
+function getResendClient() {
+  if (!resendClient) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (apiKey) {
+      resendClient = new Resend(apiKey);
+    }
+  }
+  return resendClient;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Resend Email Endpoint
+  app.post("/api/invoices/send", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
+
+    const { to, companyName, clientName, invoiceNumber, amount, items, dueDate } = req.body;
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (!user) return res.status(401).json({ error: "Sessão inválida" });
+
+      const resend = getResendClient();
+      if (!resend) {
+        return res.status(400).json({ error: "Serviço de email não configurado." });
+      }
+      
+      const htmlContent = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+            <h1 style="color: #1a1a1a; margin: 0;">FATURA</h1>
+            <div style="text-align: right;">
+              <p style="margin: 0; font-weight: bold;">${companyName}</p>
+              <p style="margin: 0; color: #666; font-size: 12px;">Fatura #${invoiceNumber}</p>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 40px;">
+            <p style="margin: 0; color: #666; font-size: 12px; text-transform: uppercase;">Faturar a:</p>
+            <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 16px;">${clientName}</p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
+            <thead>
+              <tr style="border-bottom: 2px solid #eee;">
+                <th style="text-align: left; padding: 10px 0; font-size: 12px; color: #666; text-transform: uppercase;">Descrição</th>
+                <th style="text-align: right; padding: 10px 0; font-size: 12px; color: #666; text-transform: uppercase;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item: any) => `
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 15px 0;">${item.description}</td>
+                  <td style="padding: 15px 0; text-align: right;">${item.amount.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 40px;">
+            <div style="width: 200px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span style="color: #666;">Total:</span>
+                <span style="font-weight: bold; font-size: 20px;">${amount.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #666; font-size: 12px;">Vencimento:</span>
+                <span style="font-weight: bold; font-size: 12px;">${dueDate}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
+            <p>Obrigado pela sua preferência!</p>
+          </div>
+        </div>
+      `;
+
+      const { data, error } = await resend.emails.send({
+        from: 'Faturamento <onboarding@resend.dev>',
+        to: [to],
+        subject: `Fatura #${invoiceNumber} - ${companyName}`,
+        html: htmlContent,
+      });
+
+      if (error) {
+        return res.status(400).json({ error });
+      }
+
+      res.json({ success: true, data });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // Viva Wallet Endpoints
   app.post("/api/viva/create-order", async (req, res) => {
@@ -207,6 +305,9 @@ async function startServer() {
 
   // Test Email Endpoint (Resend)
   app.post("/api/test-email", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
+
     const resendKey = process.env.RESEND_API_KEY;
     
     if (!resendKey) {
@@ -214,6 +315,9 @@ async function startServer() {
     }
 
     try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (!user) return res.status(401).json({ error: "Sessão inválida" });
       const resend = new Resend(resendKey);
       const { data, error } = await resend.emails.send({
         from: 'onboarding@resend.dev',

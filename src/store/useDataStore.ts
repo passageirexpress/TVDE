@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company } from '../types';
+import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate } from '../types';
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
@@ -15,6 +15,12 @@ interface DataState {
   payments: Payment[];
   earningImports: EarningImport[];
   notifications: AppNotification[];
+  maintenances: Maintenance[];
+  claims: Claim[];
+  inventoryItems: InventoryItem[];
+  chatMessages: ChatMessage[];
+  contracts: Contract[];
+  affiliates: Affiliate[];
   settings: CompanySettings;
   isLoading: boolean;
   
@@ -45,6 +51,29 @@ interface DataState {
   setVehicles: (vehicles: Vehicle[]) => void;
   addVehicle: (vehicle: Vehicle) => void;
   updateVehicle: (id: string, vehicle: Partial<Vehicle>) => void;
+  
+  // Maintenance
+  addMaintenance: (maintenance: Maintenance) => void;
+  updateMaintenance: (id: string, maintenance: Partial<Maintenance>) => void;
+  
+  // Claims
+  addClaim: (claim: Claim) => void;
+  updateClaim: (id: string, claim: Partial<Claim>) => void;
+  
+  // Inventory
+  addInventoryItem: (item: InventoryItem) => void;
+  updateInventoryItem: (id: string, item: Partial<InventoryItem>) => void;
+  
+  // Chat
+  addChatMessage: (message: ChatMessage) => void;
+  
+  // Contracts
+  addContract: (contract: Contract) => void;
+  updateContract: (id: string, contract: Partial<Contract>) => void;
+  
+  // Affiliates
+  addAffiliate: (affiliate: Affiliate) => void;
+  updateAffiliate: (id: string, affiliate: Partial<Affiliate>) => void;
   
   // Expenses
   setExpenses: (expenses: Expense[]) => void;
@@ -94,6 +123,9 @@ const initialVehicles: Vehicle[] = [
     policy_number: '123',
     current_driver_id: '1',
     documents: [],
+    maintenance_history: [],
+    claims: [],
+    inventory: [],
     rental_history: [
       { driver_name: 'João Silva', start_date: '2023-01-01', end_date: '2023-12-31' },
       { driver_name: 'Maria Santos', start_date: '2024-01-01', end_date: '2024-02-15' }
@@ -114,6 +146,9 @@ const initialVehicles: Vehicle[] = [
     policy_number: '124',
     current_driver_id: '2',
     documents: [],
+    maintenance_history: [],
+    claims: [],
+    inventory: [],
     rental_history: [
       { driver_name: 'Carlos Oliveira', start_date: '2023-01-01', end_date: '2023-06-30' },
       { driver_name: 'Ana Costa', start_date: '2023-07-01', end_date: '2023-12-31' }
@@ -133,6 +168,9 @@ const initialVehicles: Vehicle[] = [
     inspection_expiry: '2024-12-31', 
     policy_number: '125',
     documents: [],
+    maintenance_history: [],
+    claims: [],
+    inventory: [],
     rental_history: [
       { driver_name: 'Ricardo Pereira', start_date: '2023-01-01', end_date: '2023-12-31' }
     ]
@@ -195,6 +233,12 @@ export const useDataStore = create<DataState>()(
         { id: '1', company_id: '1', title: 'Bem-vindo ao TVDE Fleet', message: 'O seu sistema de gestão de frota está pronto a usar.', date: '2026-02-26', read: false },
         { id: '2', company_id: '1', title: 'Pagamento Processado', message: 'O pagamento da semana 16/02 foi concluído com sucesso.', date: '2026-02-23', read: true },
       ],
+      maintenances: [],
+      claims: [],
+      inventoryItems: [],
+      chatMessages: [],
+      contracts: [],
+      affiliates: [],
       settings: initialSettings,
       isLoading: false,
 
@@ -232,6 +276,12 @@ export const useDataStore = create<DataState>()(
           let earningImportsQuery = supabase.from('earning_imports').select('*');
           let settingsQuery = supabase.from('settings').select('id, company_id, name, nif, address, email, iban, bolt_client_id, uber_client_id, created_at, updated_at');
           let companiesQuery = supabase.from('companies').select('*');
+          let maintenancesQuery = supabase.from('maintenances').select('*');
+          let claimsQuery = supabase.from('claims').select('*');
+          let inventoryItemsQuery = supabase.from('inventory_items').select('*');
+          let chatMessagesQuery = supabase.from('chat_messages').select('*');
+          let contractsQuery = supabase.from('contracts').select('*');
+          let affiliatesQuery = supabase.from('affiliates').select('*');
 
           if (!isMaster && companyId) {
             driversQuery = driversQuery.eq('company_id', companyId);
@@ -242,6 +292,12 @@ export const useDataStore = create<DataState>()(
             paymentsQuery = paymentsQuery.eq('company_id', companyId);
             earningImportsQuery = earningImportsQuery.eq('company_id', companyId);
             settingsQuery = settingsQuery.eq('company_id', companyId);
+            maintenancesQuery = maintenancesQuery.eq('company_id', companyId);
+            claimsQuery = claimsQuery.eq('company_id', companyId);
+            inventoryItemsQuery = inventoryItemsQuery.eq('company_id', companyId);
+            chatMessagesQuery = chatMessagesQuery.eq('company_id', companyId);
+            contractsQuery = contractsQuery.eq('company_id', companyId);
+            affiliatesQuery = affiliatesQuery.eq('company_id', companyId);
             // Managers don't see other companies
           }
 
@@ -254,7 +310,13 @@ export const useDataStore = create<DataState>()(
             { data: payments },
             { data: earningImports },
             { data: settings },
-            { data: companies }
+            { data: companies },
+            { data: maintenances },
+            { data: claims },
+            { data: inventoryItems },
+            { data: chatMessages },
+            { data: contracts },
+            { data: affiliates }
           ] = await Promise.all([
             driversQuery,
             vehiclesQuery,
@@ -264,7 +326,13 @@ export const useDataStore = create<DataState>()(
             paymentsQuery,
             earningImportsQuery,
             settingsQuery,
-            isMaster ? companiesQuery : Promise.resolve({ data: [] })
+            isMaster ? companiesQuery : Promise.resolve({ data: [] }),
+            maintenancesQuery,
+            claimsQuery,
+            inventoryItemsQuery,
+            chatMessagesQuery,
+            contractsQuery,
+            affiliatesQuery
           ]);
 
           if (drivers) set({ drivers });
@@ -276,6 +344,12 @@ export const useDataStore = create<DataState>()(
           if (earningImports) set({ earningImports });
           if (settings && settings.length > 0) set({ settings: settings[0] });
           if (companies) set({ companies });
+          if (maintenances) set({ maintenances });
+          if (claims) set({ claims });
+          if (inventoryItems) set({ inventoryItems });
+          if (chatMessages) set({ chatMessages });
+          if (contracts) set({ contracts });
+          if (affiliates) set({ affiliates });
         } catch (error) {
           console.error('Error fetching from Supabase:', error);
         } finally {
@@ -524,6 +598,82 @@ export const useDataStore = create<DataState>()(
           const updated = rentals.find(r => r.id === id);
           if (updated) get().saveToSupabase('rentals', updated);
           return { rentals };
+        });
+      },
+
+      // Maintenance
+      addMaintenance: (maintenance) => {
+        set((state) => ({ maintenances: [maintenance, ...state.maintenances] }));
+        get().saveToSupabase('maintenances', maintenance);
+      },
+      updateMaintenance: (id, updated) => {
+        set((state) => {
+          const maintenances = state.maintenances.map((m) => (m.id === id ? { ...m, ...updated } : m));
+          const item = maintenances.find(m => m.id === id);
+          if (item) get().saveToSupabase('maintenances', item);
+          return { maintenances };
+        });
+      },
+
+      // Claims
+      addClaim: (claim) => {
+        set((state) => ({ claims: [claim, ...state.claims] }));
+        get().saveToSupabase('claims', claim);
+      },
+      updateClaim: (id, updated) => {
+        set((state) => {
+          const claims = state.claims.map((c) => (c.id === id ? { ...c, ...updated } : c));
+          const item = claims.find(c => c.id === id);
+          if (item) get().saveToSupabase('claims', item);
+          return { claims };
+        });
+      },
+
+      // Inventory
+      addInventoryItem: (item) => {
+        set((state) => ({ inventoryItems: [item, ...state.inventoryItems] }));
+        get().saveToSupabase('inventory_items', item);
+      },
+      updateInventoryItem: (id, updated) => {
+        set((state) => {
+          const inventoryItems = state.inventoryItems.map((i) => (i.id === id ? { ...i, ...updated } : i));
+          const item = inventoryItems.find(i => i.id === id);
+          if (item) get().saveToSupabase('inventory_items', item);
+          return { inventoryItems };
+        });
+      },
+
+      // Chat
+      addChatMessage: (message) => {
+        set((state) => ({ chatMessages: [message, ...state.chatMessages] }));
+        get().saveToSupabase('chat_messages', message);
+      },
+
+      // Contracts
+      addContract: (contract) => {
+        set((state) => ({ contracts: [contract, ...state.contracts] }));
+        get().saveToSupabase('contracts', contract);
+      },
+      updateContract: (id, updated) => {
+        set((state) => {
+          const contracts = state.contracts.map((c) => (c.id === id ? { ...c, ...updated } : c));
+          const item = contracts.find(c => c.id === id);
+          if (item) get().saveToSupabase('contracts', item);
+          return { contracts };
+        });
+      },
+
+      // Affiliates
+      addAffiliate: (affiliate) => {
+        set((state) => ({ affiliates: [affiliate, ...state.affiliates] }));
+        get().saveToSupabase('affiliates', affiliate);
+      },
+      updateAffiliate: (id, updated) => {
+        set((state) => {
+          const affiliates = state.affiliates.map((a) => (a.id === id ? { ...a, ...updated } : a));
+          const item = affiliates.find(a => a.id === id);
+          if (item) get().saveToSupabase('affiliates', item);
+          return { affiliates };
         });
       },
 
