@@ -14,7 +14,8 @@ import {
   X,
   Edit2,
   Save,
-  BarChart as BarChartIcon
+  BarChart as BarChartIcon,
+  Upload
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -77,6 +78,41 @@ export default function Expenses() {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const importedExpenses = results.data.map((row: any) => {
+          const driver = driversData.find(d => d.full_name.toLowerCase() === (row.Motorista || '').toLowerCase());
+          
+          return {
+            id: crypto.randomUUID(),
+            company_id: user?.company_id || '',
+            driver_id: driver?.id || null,
+            category: (row.Categoria || 'outros').toLowerCase(),
+            amount: parseFloat(row.Valor?.replace(',', '.') || '0'),
+            date: row.Data || new Date().toISOString().split('T')[0],
+            description: row.Descrição || '',
+            status: row.Status || 'pending',
+            receipt_url: row.Comprovativo || null,
+            created_at: new Date().toISOString()
+          } as Expense;
+        });
+
+        importedExpenses.forEach(exp => addExpense(exp));
+        alert(`${importedExpenses.length} despesas importadas com sucesso!`);
+      },
+      error: (error) => {
+        alert('Erro ao importar CSV: ' + error.message);
+      }
+    });
+  };
+
   const [showModal, setShowModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -268,6 +304,18 @@ export default function Expenses() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-bold">Histórico de Despesas</h3>
             <div className="flex gap-2">
+              <label 
+                className="p-2 text-gray-400 hover:text-sidebar transition-colors cursor-pointer"
+                title="Importar CSV"
+              >
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  className="hidden" 
+                  onChange={handleImportCSV} 
+                />
+                <Upload className="w-5 h-5" />
+              </label>
               <button 
                 onClick={handleExportCSV}
                 className="p-2 text-gray-400 hover:text-sidebar transition-colors"

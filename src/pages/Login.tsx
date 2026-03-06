@@ -45,8 +45,8 @@ export default function Login() {
         password: cleanPassword,
       });
 
-      if (error) {
-        console.log("Auth Error:", error.message);
+      if (error || isPlaceholder) {
+        console.log("Auth Error or Placeholder Mode:", error?.message);
         
         // Fallback for Master Admin and Legacy Users
         // We check this even if the error isn't exactly "Invalid login credentials"
@@ -63,6 +63,29 @@ export default function Login() {
           });
           navigate('/');
           return;
+        }
+
+        // Check local store first if in placeholder mode
+        if (isPlaceholder) {
+          const localUser = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPassword);
+          if (localUser) {
+            setUser(localUser);
+            navigate('/');
+            return;
+          }
+          
+          const localDriver = drivers.find(d => d.email.toLowerCase() === cleanEmail && d.password === cleanPassword);
+          if (localDriver) {
+            setUser({
+              id: localDriver.id,
+              email: localDriver.email,
+              role: 'driver',
+              full_name: localDriver.full_name,
+              company_id: localDriver.company_id
+            });
+            navigate('/');
+            return;
+          }
         }
 
         // Check in Users Table (Legacy/Manual Fallback)

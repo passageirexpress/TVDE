@@ -246,55 +246,80 @@ export default function Vehicles() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Seguro</span>
-                    <div className="flex items-center gap-1.5">
-                      {insuranceExpired ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                      ) : insuranceExpiring ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                      ) : (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      )}
-                      <span className={cn(
-                        "font-medium",
-                        insuranceExpired ? "text-red-600" : insuranceExpiring ? "text-amber-600" : "text-gray-700"
-                      )}>{v.insurance}</span>
+                  {hasAlert && (
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2 text-amber-800 font-bold text-xs uppercase tracking-wider">
+                        <AlertTriangle className="w-4 h-4" />
+                        Alertas Pendentes
+                      </div>
+                      
                       {(insuranceExpired || insuranceExpiring) && (
-                        <button 
-                          onClick={() => handleOpenModal(v)}
-                          className="text-[10px] text-indigo-600 hover:underline flex items-center gap-0.5 ml-1"
-                        >
-                          Atualizar <ExternalLink className="w-2 h-2" />
-                        </button>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-amber-700">Seguro</span>
+                          <div className="flex items-center gap-1.5">
+                            {insuranceExpired ? (
+                              <X className="w-3.5 h-3.5 text-red-500" />
+                            ) : (
+                              <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            )}
+                            <span className={cn(
+                              "font-medium",
+                              insuranceExpired ? "text-red-600" : "text-amber-600"
+                            )}>{v.insurance}</span>
+                            <button 
+                              onClick={() => handleOpenModal(v)}
+                              className="text-[10px] text-indigo-600 hover:underline flex items-center gap-0.5 ml-1"
+                            >
+                              Atualizar <ExternalLink className="w-2 h-2" />
+                            </button>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Inspeção</span>
-                    <div className="flex items-center gap-1.5">
-                      {inspectionExpired ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                      ) : inspectionExpiring ? (
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                      ) : (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                      )}
-                      <span className={cn(
-                        "font-medium",
-                        inspectionExpired ? "text-red-600" : inspectionExpiring ? "text-amber-600" : "text-gray-700"
-                      )}>{v.inspection}</span>
                       {(inspectionExpired || inspectionExpiring) && (
-                        <button 
-                          onClick={() => handleOpenModal(v)}
-                          className="text-[10px] text-indigo-600 hover:underline flex items-center gap-0.5 ml-1"
-                        >
-                          Atualizar <ExternalLink className="w-2 h-2" />
-                        </button>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-amber-700">Inspeção</span>
+                          <div className="flex items-center gap-1.5">
+                            {inspectionExpired ? (
+                              <X className="w-3.5 h-3.5 text-red-500" />
+                            ) : (
+                              <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            )}
+                            <span className={cn(
+                              "font-medium",
+                              inspectionExpired ? "text-red-600" : "text-amber-600"
+                            )}>{v.inspection}</span>
+                            <button 
+                              onClick={() => handleOpenModal(v)}
+                              className="text-[10px] text-indigo-600 hover:underline flex items-center gap-0.5 ml-1"
+                            >
+                              Atualizar <ExternalLink className="w-2 h-2" />
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
+                  )}
+
+                  {!hasAlert && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">Seguro</span>
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="font-medium text-gray-700">{v.insurance}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">Inspeção</span>
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="font-medium text-gray-700">{v.inspection}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">

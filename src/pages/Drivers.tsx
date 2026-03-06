@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Plus, Search, Filter, MoreHorizontal, UserCheck, UserX, FileText, Download, ChevronLeft, ChevronRight, AlertCircle, FileSignature } from 'lucide-react';
 // @ts-ignore
 import { FixedSizeList as List } from 'react-window';
-import { cn, formatPercent, formatCurrency } from '../lib/utils';
+import { cn, formatPercent, formatCurrency, isValidNIF } from '../lib/utils';
 import DriverDetails from '../components/DriverDetails';
 import DriverContractModal from '../components/DriverContractModal';
 import { Driver } from '../types';
@@ -40,6 +40,11 @@ export default function Drivers() {
     
     if (newDriver.password && newDriver.password.length < 6) {
       alert('A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+
+    if (newDriver.nif && !isValidNIF(newDriver.nif)) {
+      alert('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
       return;
     }
 

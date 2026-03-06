@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Zap, ArrowRight, Building2, Mail, Lock, User, Hash, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, isValidNIF } from '../lib/utils';
+import { useDataStore } from '../store/useDataStore';
 
 export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedPlan = searchParams.get('plan') || 'free';
   const [loading, setLoading] = useState(false);
+  const { addCompany, addUser } = useDataStore();
   const [formData, setFormData] = useState({
     company_name: '',
     company_nif: '',
@@ -35,7 +37,42 @@ export default function Register() {
       return;
     }
 
+    if (!isValidNIF(formData.company_nif)) {
+      alert('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      const isPlaceholder = import.meta.env.VITE_SUPABASE_URL?.includes('placeholder') || !import.meta.env.VITE_SUPABASE_URL;
+      
+      if (isPlaceholder) {
+        // Local fallback
+        const companyId = crypto.randomUUID();
+        addCompany({
+          id: companyId,
+          name: formData.company_name,
+          nif: formData.company_nif,
+          status: 'active',
+          plan: formData.plan as any,
+          subscription_status: 'active',
+          created_at: new Date().toISOString()
+        });
+        
+        addUser({
+          id: crypto.randomUUID(),
+          email: formData.admin_email,
+          full_name: formData.admin_name,
+          role: 'admin',
+          company_id: companyId,
+          password: formData.admin_password // Store password for local login fallback
+        });
+        
+        alert('Empresa registada com sucesso (Modo Local)! Por favor, faça login.');
+        navigate('/login');
+        return;
+      }
+
       const response = await fetch('/api/auth/register-company', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

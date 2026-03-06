@@ -15,9 +15,20 @@ import {
   Upload,
   Loader2
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import { Driver, DriverDocument } from '../types';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, isValidNIF } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
+
+// Fix for default marker icon in react-leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface DriverDetailsProps {
   driver: Driver;
@@ -110,6 +121,11 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
         alert('A senha deve ter no mínimo 6 caracteres.');
         return;
       }
+    }
+
+    if (editedDriver.nif && !isValidNIF(editedDriver.nif)) {
+      alert('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
+      return;
     }
 
     if (onUpdate) {
@@ -311,7 +327,33 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
               </section>
 
               <section>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4 mt-8">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Última Localização</h3>
+                </div>
+                <div className="h-64 w-full rounded-2xl overflow-hidden border border-gray-200 relative z-0">
+                  <MapContainer 
+                    center={[38.7223, -9.1393]} // Default to Lisbon
+                    zoom={13} 
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[38.7223, -9.1393]}>
+                      <Popup>
+                        <div className="text-center">
+                          <p className="font-bold text-sm">{driver.full_name}</p>
+                          <p className="text-xs text-gray-500">Última localização registada</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  </MapContainer>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between mb-4 mt-8">
                   <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Documentação</h3>
                   <button className="text-xs font-bold text-sidebar hover:underline">Validar Todos</button>
                 </div>
