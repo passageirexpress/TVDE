@@ -28,10 +28,6 @@ export default function Login() {
     if (isLoggingIn) return;
 
     const isPlaceholder = import.meta.env.VITE_SUPABASE_URL?.includes('placeholder') || !import.meta.env.VITE_SUPABASE_URL;
-    if (isPlaceholder && !(email === 'master@tvdefleet.com' && password === '1234')) {
-      alert('As chaves do Supabase não foram configuradas. Use o login Master Admin (master@tvdefleet.com / 1234) para testar localmente.');
-      return;
-    }
     
     setIsLoggingIn(true);
     
@@ -40,19 +36,23 @@ export default function Login() {
       const cleanPassword = password.trim();
 
       // 1. Sign in with Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: cleanPassword,
-      });
+      let authResult: any = { data: { session: null }, error: null };
+      
+      if (!isPlaceholder) {
+        authResult = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: cleanPassword,
+        });
+      } else {
+        console.warn("Supabase is in placeholder mode. Real authentication is disabled.");
+      }
 
-      if (error || isPlaceholder) {
-        console.log("Auth Error or Placeholder Mode:", error?.message);
+      const { data, error } = authResult;
+
+      if (error || isPlaceholder || !data.session) {
+        if (error) console.log("Auth Error:", error.message);
         
         // Fallback for Master Admin and Legacy Users
-        // We check this even if the error isn't exactly "Invalid login credentials"
-        // to be more resilient during setup.
-        
-        // Check for Master Admin Hardcoded Fallback
         if (cleanEmail === 'master@tvdefleet.com' && cleanPassword === '1234') {
           console.log("Master Admin Fallback Triggered");
           setUser({
@@ -65,8 +65,8 @@ export default function Login() {
           return;
         }
 
-        // Check local store first if in placeholder mode
         if (isPlaceholder) {
+          // Check local store first if in placeholder mode
           const localUser = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPassword);
           if (localUser) {
             setUser(localUser);
@@ -86,13 +86,17 @@ export default function Login() {
             navigate('/');
             return;
           }
+
+          throw new Error('O sistema está em modo de demonstração (chaves Supabase não configuradas). Para entrar com uma nova empresa, você deve configurar as chaves VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente. Para testar agora, use master@tvdefleet.com / 1234.');
         }
 
         // Check in Users Table (Legacy/Manual Fallback)
+        // Note: This only works for users with plain-text passwords in the DB, 
+        // which we only use for local/demo purposes.
         try {
-          const { data: adminData, error: dbError } = await supabase
+          const { data: adminData } = await supabase
             .from('users')
-            .select('id, email, role, full_name, company_id')
+            .select('id, email, role, full_name, company_id, password')
             .eq('email', cleanEmail)
             .eq('password', cleanPassword)
             .maybeSingle();
@@ -109,36 +113,14 @@ export default function Login() {
             navigate('/');
             return;
           }
-
-          // Check in Drivers Table
-          const { data: driverData } = await supabase
-            .from('drivers')
-            .select('id, email, full_name, company_id, password')
-            .eq('email', cleanEmail)
-            .eq('password', cleanPassword)
-            .maybeSingle();
-
-          if (driverData) {
-            console.log("Database Fallback Triggered (Driver)");
-            setUser({
-              id: driverData.id,
-              email: driverData.email,
-              role: 'driver',
-              full_name: driverData.full_name,
-              company_id: driverData.company_id
-            });
-            navigate('/');
-            return;
-          }
         } catch (dbFallbackError) {
           console.error("Database fallback failed:", dbFallbackError);
         }
 
-        // If all fallbacks fail, show the original error
-        if (error.message === 'Invalid login credentials') {
-          throw new Error('Credenciais inválidas. Se você é o Master Admin, use master@tvdefleet.com / 1234. Se acabou de criar um usuário, verifique se confirmou o e-mail (se aplicável).');
+        if (error?.message === 'Invalid login credentials') {
+          throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
         }
-        throw error;
+        throw error || new Error('Falha na autenticação.');
       }
 
       if (data.session) {
