@@ -6,6 +6,7 @@ import {
   Navigate
 } from 'react-router-dom';
 import { FileText, BarChart3, PieChart, Download } from 'lucide-react';
+import { Toaster } from 'sonner';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Performance from './pages/Performance';
@@ -24,6 +25,7 @@ import Notifications from './pages/Notifications';
 import Subscription from './pages/Subscription';
 import MasterSubscriptions from './pages/MasterSubscriptions';
 import MasterSettings from './pages/MasterSettings';
+import Contracts from './pages/Contracts';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
 import Register from './pages/Register';
@@ -93,6 +95,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route path="/login" element={<Login />} />
@@ -129,6 +132,11 @@ export default function App() {
           <Route path="maintenance" element={
             <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
               <Maintenance />
+            </ProtectedRoute>
+          } />
+          <Route path="contracts" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Contracts />
             </ProtectedRoute>
           } />
           <Route path="claims" element={<Claims />} />

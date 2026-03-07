@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Building2, Mail, MoreHorizontal, X, Save, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Company } from '../types';
 import { useDataStore } from '../store/useDataStore';
@@ -54,18 +55,18 @@ export default function Companies() {
 
   const handleSave = () => {
     if (!formData.name || !formData.nif) {
-      alert('Por favor, preencha pelo menos o nome e o NIF.');
+      toast.error('Por favor, preencha pelo menos o nome e o NIF.');
       return;
     }
 
     if (!editingCompany && (!formData.admin_email || !formData.admin_password)) {
-      alert('Por favor, preencha o email e senha do administrador para a nova empresa.');
+      toast.error('Por favor, preencha o email e senha do administrador para a nova empresa.');
       return;
     }
 
     if (editingCompany) {
       updateCompany(editingCompany.id, formData);
-      alert('Empresa atualizada com sucesso!');
+      toast.success('Empresa atualizada com sucesso!');
     } else {
       const newCompany: Company = {
         id: crypto.randomUUID(),
@@ -75,7 +76,7 @@ export default function Companies() {
         ...formData
       };
       addCompany(newCompany);
-      alert('Empresa criada com sucesso! O administrador foi registado.');
+      toast.success('Empresa criada com sucesso! O administrador foi registado.');
     }
     setShowModal(false);
   };

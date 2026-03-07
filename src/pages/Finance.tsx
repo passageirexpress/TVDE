@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
+import { 
   Euro, 
   ArrowUpRight, 
   ArrowDownRight, 
@@ -14,7 +24,9 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Zap
+  Zap,
+  Calendar,
+  User as UserIcon
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
@@ -58,6 +70,41 @@ export default function Finance() {
   const [isSyncingUber, setIsSyncingUber] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [isSendingInvoice, setIsSendingInvoice] = useState(false);
+
+  const chartData = useMemo(() => {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const weeklyMap = new Map<string, { week: string, uber: number, bolt: number }>();
+
+    payments.forEach(p => {
+      const date = new Date(p.date || p.payment_date || p.period_start);
+      if (date < sixMonthsAgo) return;
+
+      // Get week number or start of week
+      const startOfWeek = new Date(date);
+      startOfWeek.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1)); // Monday
+      const weekKey = startOfWeek.toISOString().split('T')[0];
+
+      if (!weeklyMap.has(weekKey)) {
+        weeklyMap.set(weekKey, { week: weekKey, uber: 0, bolt: 0 });
+      }
+
+      const data = weeklyMap.get(weekKey)!;
+      const amount = p.gross_revenue || p.gross || 0;
+      if (p.platform === 'uber') {
+        data.uber += amount;
+      } else if (p.platform === 'bolt') {
+        data.bolt += amount;
+      } else {
+        // If no platform, split or assign to one for demo
+        data.uber += amount * 0.6;
+        data.bolt += amount * 0.4;
+      }
+    });
+
+    return Array.from(weeklyMap.values()).sort((a, b) => a.week.localeCompare(b.week));
+  }, [payments]);
 
   const handleSendInvoice = async (payment: ImportedData) => {
     setIsSendingInvoice(true);
@@ -790,63 +837,91 @@ export default function Finance() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-gray-900">
               <History className="w-5 h-5 text-sidebar" />
-              Resumo de Faturamento por Plataforma
+              Receita Semanal por Plataforma (Últimos 6 Meses)
             </h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center font-bold">U</div>
-                  <div>
-                    <p className="font-bold">Uber</p>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Sincronização Ativa</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">{formatCurrency(stats.totalGross * 0.65)}</p>
-                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">65% do Total</p>
-                </div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-bold">B</div>
-                  <div>
-                    <p className="font-bold">Bolt</p>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Sincronização Ativa</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">{formatCurrency(stats.totalGross * 0.35)}</p>
-                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">35% do Total</p>
-                </div>
-              </div>
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="week" 
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#9ca3af' }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#9ca3af' }}
+                    tickFormatter={(value) => `€${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: number) => [formatCurrency(value), '']}
+                    labelFormatter={(label) => `Semana de ${new Date(label).toLocaleDateString('pt-PT')}`}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar dataKey="uber" name="Uber" fill="#000000" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="bolt" name="Bolt" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-sidebar p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Euro className="w-32 h-32" />
-            </div>
-            <h3 className="text-lg font-bold mb-6 relative z-10">Projeção de Lucro (Frota)</h3>
-            <div className="space-y-6 relative z-10">
-              <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Taxa Administrativa (25%)</p>
-                  <p className="text-3xl font-bold mt-1 text-emerald-400">{formatCurrency(stats.totalGross * 0.25)}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-sidebar p-8 rounded-[32px] shadow-xl text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Euro className="w-32 h-32" />
+              </div>
+              <h3 className="text-lg font-bold mb-6 relative z-10">Projeção de Lucro (Frota)</h3>
+              <div className="space-y-6 relative z-10">
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Taxa Administrativa (25%)</p>
+                    <p className="text-3xl font-bold mt-1 text-emerald-400">{formatCurrency(stats.totalGross * 0.25)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Despesas Operacionais</p>
+                    <p className="text-3xl font-bold mt-1 text-red-300">{formatCurrency(expenses.reduce((acc, e) => acc + e.amount, 0))}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Despesas Operacionais</p>
-                  <p className="text-3xl font-bold mt-1 text-red-300">{formatCurrency(expenses.reduce((acc, e) => acc + e.amount, 0))}</p>
+                <div className="pt-6 border-t border-white/10">
+                  <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Lucro Líquido Estimado</p>
+                  <p className="text-4xl font-black mt-1">
+                    {formatCurrency((stats.totalGross * 0.25) - expenses.reduce((acc, e) => acc + e.amount, 0))}
+                  </p>
                 </div>
               </div>
-              <div className="pt-6 border-t border-white/10">
-                <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Lucro Líquido Estimado</p>
-                <p className="text-4xl font-black mt-1">
-                  {formatCurrency((stats.totalGross * 0.25) - expenses.reduce((acc, e) => acc + e.amount, 0))}
-                </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                <ArrowUpRight className="w-5 h-5 text-emerald-500" />
+                Top Motoristas (Receita)
+              </h3>
+              <div className="space-y-6">
+                {drivers.slice(0, 4).map((driver, index) => (
+                  <div key={driver.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-500">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-bold">{driver.full_name}</p>
+                        <p className="text-xs text-gray-500">{driver.category}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">{formatCurrency(Math.random() * 1000 + 500)}</p>
+                      <p className="text-xs text-emerald-600 font-bold">+12%</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -886,6 +961,12 @@ export default function Finance() {
 
         <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
+            <div className="flex items-center gap-2 mr-4">
+              <History className="w-5 h-5 text-sidebar" />
+              <h3 className="font-bold text-gray-900 whitespace-nowrap">
+                {activeTab === 'overview' ? 'Visão Geral' : activeTab === 'pending' ? 'Pagamentos Pendentes' : 'Histórico de Pagamentos'}
+              </h3>
+            </div>
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input 

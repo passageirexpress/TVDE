@@ -28,6 +28,7 @@ const adminItems = [
   { icon: BarChart3, label: 'Desempenho', path: '/dashboard/performance' },
   { icon: Car, label: 'Frota', path: '/dashboard/fleet' },
   { icon: Users, label: 'Motoristas', path: '/dashboard/drivers' },
+  { icon: FileText, label: 'Contratos', path: '/dashboard/contracts' },
   { icon: Car, label: 'Veículos', path: '/dashboard/vehicles' },
   { icon: Wrench, label: 'Manutenção', path: '/dashboard/maintenance' },
   { icon: ShieldAlert, label: 'Sinistros', path: '/dashboard/claims' },

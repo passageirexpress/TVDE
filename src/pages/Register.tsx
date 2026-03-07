@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Zap, ArrowRight, Building2, Mail, Lock, User, Hash, Loader2, CheckCircle2, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { cn, isValidNIF } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
@@ -48,33 +49,8 @@ export default function Register() {
     }
 
     try {
-      const isPlaceholder = import.meta.env.VITE_SUPABASE_URL?.includes('placeholder') || !import.meta.env.VITE_SUPABASE_URL;
-      
-      if (isPlaceholder) {
-        // Local fallback
-        const companyId = crypto.randomUUID();
-        addCompany({
-          id: companyId,
-          name: formData.company_name,
-          nif: formData.company_nif,
-          status: 'active',
-          plan: formData.plan as any,
-          subscription_status: 'active',
-          created_at: new Date().toISOString()
-        });
-        
-        addUser({
-          id: crypto.randomUUID(),
-          email: formData.admin_email,
-          full_name: formData.admin_name,
-          role: 'admin',
-          company_id: companyId,
-          password: formData.admin_password // Store password for local login fallback
-        });
-        
-        alert('Empresa registada com sucesso (Modo Local)! Por favor, faça login.');
-        navigate('/login');
-        return;
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        throw new Error('As chaves do Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY) não estão configuradas corretamente no ambiente. Por favor, adicione-as nas configurações do projeto.');
       }
 
       const response = await fetch('/api/auth/register-company', {
@@ -83,22 +59,32 @@ export default function Register() {
         body: JSON.stringify(formData)
       });
 
-      const result = await response.json();
+      let result;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(text || "Erro inesperado do servidor.");
+      }
+
       if (!response.ok) throw new Error(result.error || 'Erro ao registar empresa');
 
       if (result.checkoutUrl) {
-        // Extract orderCode from checkoutUrl if possible, or we might need it from the backend
-        // Actually, let's assume the backend can return the orderCode directly
-        // I'll update the backend to return orderCode too.
         setRegisteredCompany(result.company);
         setOrderCode(result.orderCode || result.checkoutUrl.split('ref=')[1]);
         setShowPayment(true);
+        toast.success('Empresa registada! Por favor, complete o pagamento para ativar a sua conta.');
       } else {
-        alert('Empresa registada com sucesso! Por favor, faça login.');
+        toast.success('Empresa registada com sucesso! Por favor, faça login.');
         navigate('/login');
       }
     } catch (error: any) {
-      alert(error.message);
+      console.error('Register error:', error);
+      const errorMessage = error.message === 'Failed to fetch'
+        ? 'Falha de conexão com o servidor. Verifique se o URL do Supabase está correto (deve começar com https://) e se a sua ligação à internet está ativa.'
+        : error.message || 'Erro ao processar o registo.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

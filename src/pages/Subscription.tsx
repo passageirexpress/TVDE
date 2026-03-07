@@ -119,7 +119,10 @@ export default function Subscription() {
       }
     } catch (error: any) {
       console.error("Checkout error:", error);
-      alert(error.message || "Erro de conexão com o servidor.");
+      const errorMessage = error.message === 'Failed to fetch' 
+        ? 'Erro de conexão com o servidor. O serviço de pagamentos pode estar temporariamente indisponível.'
+        : error.message || "Erro de conexão com o servidor.";
+      alert(errorMessage);
     } finally {
       setIsProcessing(false);
     }

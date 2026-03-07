@@ -60,13 +60,14 @@ async function getVivaAccessToken() {
     return response.data.access_token;
   } catch (error: any) {
     const errorDetail = error.response?.data || error.message;
-    console.error("Viva Token Error:", JSON.stringify(errorDetail));
+    console.error("Viva Token Error:", errorDetail);
     throw new Error(`Falha ao obter token da Viva Wallet: ${error.message}`);
   }
 }
 
 // Resend Email Integration
 let resendClient: Resend | null = null;
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'TVDE Fleet <onboarding@resend.dev>';
 
 function getResendClient() {
   if (!resendClient) {
@@ -119,7 +120,7 @@ async function startServer() {
       `;
 
       const data = await resend.emails.send({
-        from: 'TVDE Fleet <onboarding@resend.dev>',
+        from: RESEND_FROM_EMAIL,
         to: [to],
         subject: subject,
         html: htmlContent,
@@ -201,7 +202,7 @@ async function startServer() {
       `;
 
       const { data, error } = await resend.emails.send({
-        from: 'Faturamento <onboarding@resend.dev>',
+        from: RESEND_FROM_EMAIL,
         to: [to],
         subject: `Fatura #${invoiceNumber} - ${companyName}`,
         html: htmlContent,
@@ -267,7 +268,7 @@ async function startServer() {
       });
     } catch (error: any) {
       const errorDetail = error.response?.data?.errors || error.response?.data || error.message;
-      console.error("Viva Create Order Error:", JSON.stringify(errorDetail));
+      console.error("Viva Create Order Error:", errorDetail);
       res.status(500).json({ 
         error: "Erro ao criar ordem de pagamento na Viva Wallet",
         details: errorDetail
@@ -384,10 +385,10 @@ async function startServer() {
       if (!user) return res.status(401).json({ error: "Sessão inválida" });
       const resend = new Resend(resendKey);
       const { data, error } = await resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: 'passageiroexpress@gmail.com',
-        subject: 'Hello World',
-        html: '<p>Congrats on sending your <strong>first email</strong>!</p>'
+        from: RESEND_FROM_EMAIL,
+        to: [user.email || 'passageiroexpress@gmail.com'],
+        subject: 'Teste de Email - TVDE Fleet',
+        html: '<p>Este é um email de teste enviado com sucesso!</p>'
       });
 
       if (error) {
@@ -575,7 +576,33 @@ async function startServer() {
 
       console.log(`[REGISTER] Registro completo para ${admin_email}`);
 
-      // 4. Handle Viva Wallet Payment if plan is not free
+      // 4. Send Welcome Email
+      const resend = getResendClient();
+      if (resend) {
+        try {
+          await resend.emails.send({
+            from: RESEND_FROM_EMAIL,
+            to: [admin_email],
+            subject: 'Bem-vindo à TVDE Fleet CRM',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #1a1a1a;">Bem-vindo, ${admin_name}!</h1>
+                <p>A sua conta de administrador para a empresa <strong>${company_name}</strong> foi criada com sucesso.</p>
+                <p>Agora pode começar a gerir a sua frota, motoristas e veículos de forma eficiente.</p>
+                <div style="margin: 30px 0;">
+                  <a href="${process.env.APP_URL || 'https://tvdefleet.com'}/login" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Aceder ao Painel</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">Se tiver alguma dúvida, responda a este email.</p>
+              </div>
+            `
+          });
+          console.log(`[REGISTER] Email de boas-vindas enviado para ${admin_email}`);
+        } catch (emailError) {
+          console.error("[REGISTER EMAIL ERROR]", emailError);
+        }
+      }
+
+      // 5. Handle Viva Wallet Payment if plan is not free
       let checkoutUrl = null;
       let orderCode = null;
       if (plan && plan !== 'free') {
@@ -698,6 +725,37 @@ async function startServer() {
         throw profileError;
       }
 
+      // 3. Send Welcome Email
+      const resend = getResendClient();
+      if (resend) {
+        try {
+          const loginUrl = process.env.APP_URL || 'https://tvdefleet.com';
+          await resend.emails.send({
+            from: RESEND_FROM_EMAIL,
+            to: [email],
+            subject: 'Bem-vindo à TVDE Fleet',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #1a1a1a;">Olá, ${full_name}!</h1>
+                <p>Foi criada uma conta para si na plataforma TVDE Fleet com a função de <strong>${role === 'driver' ? 'Motorista' : role}</strong>.</p>
+                <p>Pode aceder à sua conta utilizando as seguintes credenciais:</p>
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                  <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+                  <p style="margin: 5px 0;"><strong>Senha:</strong> ${password}</p>
+                </div>
+                <div style="margin: 30px 0;">
+                  <a href="${loginUrl}/login" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Fazer Login</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">Por razões de segurança, recomendamos que altere a sua senha após o primeiro acesso.</p>
+              </div>
+            `
+          });
+          console.log(`[CREATE USER] Email de boas-vindas enviado para ${email}`);
+        } catch (emailError) {
+          console.error("[CREATE USER EMAIL ERROR]", emailError);
+        }
+      }
+
       res.json({ success: true, user: authData.user });
     } catch (error: any) {
       console.error("Create User Error:", error.message);
@@ -750,7 +808,7 @@ async function startServer() {
     try {
       const resend = new Resend(resendKey);
       await resend.emails.send({
-        from: 'TVDE Fleet <alerts@tvdefleet.com>',
+        from: RESEND_FROM_EMAIL,
         to: [to],
         subject: subject,
         html: `<div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -767,6 +825,42 @@ async function startServer() {
       return { success: false, error: error.message };
     }
   }
+
+  // Test Welcome Email Endpoint
+  app.post("/api/test/welcome-email", async (req, res) => {
+    const { email, name, role } = req.body;
+    if (!email) return res.status(400).json({ error: "Email é obrigatório" });
+
+    const resend = getResendClient();
+    if (!resend) return res.status(400).json({ error: "Resend API Key não configurada" });
+
+    try {
+      const loginUrl = process.env.APP_URL || 'https://tvdefleet.com';
+      await resend.emails.send({
+        from: RESEND_FROM_EMAIL,
+        to: [email],
+        subject: 'Bem-vindo à TVDE Fleet (Teste)',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #1a1a1a;">Olá, ${name || 'Utilizador de Teste'}!</h1>
+            <p>Foi criada uma conta para si na plataforma TVDE Fleet com a função de <strong>${role || 'Motorista'}</strong>.</p>
+            <p>Pode aceder à sua conta utilizando as seguintes credenciais:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+              <p style="margin: 5px 0;"><strong>Senha:</strong> ********</p>
+            </div>
+            <div style="margin: 30px 0;">
+              <a href="${loginUrl}/login" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Fazer Login</a>
+            </div>
+            <p style="color: #666; font-size: 14px;">Se recebeu este email, a configuração do serviço de email está correta!</p>
+          </div>
+        `
+      });
+      res.json({ success: true, message: `Email de boas-vindas de teste enviado para ${email}` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // API to trigger document expiration alerts
   app.post("/api/alerts/check-expirations", async (req, res) => {

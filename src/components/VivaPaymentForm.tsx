@@ -64,7 +64,10 @@ export default function VivaPaymentForm({
         throw new Error(result.message || 'Pagamento não autorizado');
       }
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message === 'Failed to fetch'
+        ? 'Erro de conexão com o servidor. O serviço de pagamentos pode estar temporariamente indisponível.'
+        : err.message;
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

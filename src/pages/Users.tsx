@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Shield, Mail, MoreHorizontal, UserPlus, X, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { User } from '../types';
 import { useDataStore } from '../store/useDataStore';
@@ -48,12 +49,12 @@ export default function Users() {
 
   const handleSave = async () => {
     if (!formData.full_name || !formData.email) {
-      alert('Por favor, preencha todos os campos.');
+      toast.error('Por favor, preencha todos os campos.');
       return;
     }
 
     if (user?.role === 'master' && !formData.company_id) {
-      alert('Por favor, selecione uma empresa.');
+      toast.error('Por favor, selecione uma empresa.');
       return;
     }
 
@@ -63,14 +64,14 @@ export default function Users() {
     try {
       if (editingUser) {
         updateUser(editingUser.id, formData);
-        alert('Usuário atualizado com sucesso!');
+        toast.success('Usuário atualizado com sucesso!');
       } else {
         await createUserAuth(formData);
-        alert('Usuário criado com sucesso!');
+        toast.success('Usuário criado com sucesso!');
       }
       setShowModal(false);
     } catch (error: any) {
-      alert(error.message || 'Erro ao salvar usuário');
+      toast.error(error.message || 'Erro ao salvar usuário');
     } finally {
       setIsSaving(false);
     }

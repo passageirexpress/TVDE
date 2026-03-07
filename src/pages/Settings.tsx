@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 import { CompanySettings } from '../types';
 import { useDataStore } from '../store/useDataStore';
 
@@ -33,9 +34,9 @@ export default function Settings() {
       }
 
       updateSettings(settings);
-      alert('Configurações da empresa atualizadas com sucesso!');
+      toast.success('Configurações da empresa atualizadas com sucesso!');
     } catch (error: any) {
-      alert('Erro: ' + error.message);
+      toast.error('Erro: ' + error.message);
     } finally {
       setIsSaving(false);
     }

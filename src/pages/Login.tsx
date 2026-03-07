@@ -35,6 +35,10 @@ export default function Login() {
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        throw new Error('As chaves do Supabase (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY) não estão configuradas corretamente no ambiente. Por favor, adicione-as nas configurações do projeto.');
+      }
+
       // 1. Sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -57,6 +61,9 @@ export default function Login() {
           return;
         }
 
+        if (error?.message === 'Failed to fetch') {
+          throw new Error('Falha de conexão com o servidor. Verifique se o URL do Supabase está correto (deve começar com https://) e se a sua ligação à internet está ativa.');
+        }
         if (error?.message === 'Invalid login credentials') {
           throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
         }

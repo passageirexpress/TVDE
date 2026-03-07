@@ -161,6 +161,48 @@ export default function MasterSettings() {
                     defaultValue="onboarding@resend.dev"
                   />
                 </div>
+
+                <div className="pt-6 border-t border-gray-100">
+                  <h4 className="text-sm font-bold mb-4">Testar Envio de Email</h4>
+                  <div className="flex gap-4">
+                    <input 
+                      id="test-email-input"
+                      type="email" 
+                      placeholder="Email para teste"
+                      className="flex-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                    />
+                    <button 
+                      onClick={async () => {
+                        const email = (document.getElementById('test-email-input') as HTMLInputElement).value;
+                        if (!email) {
+                          alert('Por favor, insira um email para teste.');
+                          return;
+                        }
+                        try {
+                          const response = await fetch('/api/test/welcome-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email, name: 'Utilizador de Teste' })
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            alert('Email de teste enviado com sucesso!');
+                          } else {
+                            alert('Erro: ' + result.error);
+                          }
+                        } catch (err: any) {
+                          alert('Erro ao enviar email: ' + err.message);
+                        }
+                      }}
+                      className="bg-sidebar text-white px-6 py-2 rounded-xl font-bold hover:bg-black transition-all"
+                    >
+                      Enviar Teste
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    Nota: Se estiver a usar o domínio de teste da Resend (onboarding@resend.dev), só pode enviar para o email associado à sua conta Resend.
+                  </p>
+                </div>
               </div>
             </div>
           )}
