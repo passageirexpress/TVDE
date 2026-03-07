@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
-import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate } from '../types';
+import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog } from '../types';
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
@@ -22,6 +22,10 @@ interface DataState {
   inventoryItems: InventoryItem[];
   chatMessages: ChatMessage[];
   contracts: Contract[];
+  clients: Client[];
+  transfers: Transfer[];
+  deliveries: Delivery[];
+  fuelLogs: FuelLog[];
   affiliates: Affiliate[];
   settings: CompanySettings;
   isLoading: boolean;
@@ -30,6 +34,21 @@ interface DataState {
   setCompanies: (companies: Company[]) => void;
   addCompany: (company: Company) => void;
   updateCompany: (id: string, company: Partial<Company>) => void;
+
+  // Clients
+  addClient: (client: Client) => void;
+  updateClient: (id: string, updated: Partial<Client>) => void;
+
+  // Transfers
+  addTransfer: (transfer: Transfer) => void;
+  updateTransfer: (id: string, updated: Partial<Transfer>) => void;
+
+  // Deliveries
+  addDelivery: (delivery: Delivery) => void;
+  updateDelivery: (id: string, updated: Partial<Delivery>) => void;
+
+  // Fuel Logs
+  addFuelLog: (log: FuelLog) => void;
   
   // Notifications
   addNotification: (notification: AppNotification) => void;
@@ -232,6 +251,10 @@ export const useDataStore = create<DataState>()(
       inventoryItems: [],
       chatMessages: [],
       contracts: [],
+      clients: [],
+      transfers: [],
+      deliveries: [],
+      fuelLogs: [],
       affiliates: [],
       settings: initialSettings,
       isLoading: false,
@@ -249,6 +272,54 @@ export const useDataStore = create<DataState>()(
           if (updated) get().saveToSupabase('companies', updated);
           return { companies };
         });
+      },
+
+      // Clients
+      addClient: (client) => {
+        set((state) => ({ clients: [client, ...state.clients] }));
+        get().saveToSupabase('clients', client);
+      },
+      updateClient: (id, updated) => {
+        set((state) => {
+          const clients = state.clients.map((c) => (c.id === id ? { ...c, ...updated } : c));
+          const item = clients.find(c => c.id === id);
+          if (item) get().saveToSupabase('clients', item);
+          return { clients };
+        });
+      },
+
+      // Transfers
+      addTransfer: (transfer) => {
+        set((state) => ({ transfers: [transfer, ...state.transfers] }));
+        get().saveToSupabase('transfers', transfer);
+      },
+      updateTransfer: (id, updated) => {
+        set((state) => {
+          const transfers = state.transfers.map((t) => (t.id === id ? { ...t, ...updated } : t));
+          const item = transfers.find(t => t.id === id);
+          if (item) get().saveToSupabase('transfers', item);
+          return { transfers };
+        });
+      },
+
+      // Deliveries
+      addDelivery: (delivery) => {
+        set((state) => ({ deliveries: [delivery, ...state.deliveries] }));
+        get().saveToSupabase('deliveries', delivery);
+      },
+      updateDelivery: (id, updated) => {
+        set((state) => {
+          const deliveries = state.deliveries.map((d) => (d.id === id ? { ...d, ...updated } : d));
+          const item = deliveries.find(d => d.id === id);
+          if (item) get().saveToSupabase('deliveries', item);
+          return { deliveries };
+        });
+      },
+
+      // Fuel Logs
+      addFuelLog: (log) => {
+        set((state) => ({ fuelLogs: [log, ...state.fuelLogs] }));
+        get().saveToSupabase('fuel_logs', log);
       },
 
       // Supabase Sync
@@ -275,6 +346,10 @@ export const useDataStore = create<DataState>()(
           let inventoryItemsQuery = supabase.from('inventory_items').select('*');
           let chatMessagesQuery = supabase.from('chat_messages').select('*');
           let contractsQuery = supabase.from('contracts').select('*');
+          let clientsQuery = supabase.from('clients').select('*');
+          let transfersQuery = supabase.from('transfers').select('*');
+          let deliveriesQuery = supabase.from('deliveries').select('*');
+          let fuelLogsQuery = supabase.from('fuel_logs').select('*');
           let affiliatesQuery = supabase.from('affiliates').select('*');
 
           if (!isMaster && companyId) {
@@ -291,59 +366,46 @@ export const useDataStore = create<DataState>()(
             inventoryItemsQuery = inventoryItemsQuery.eq('company_id', companyId);
             chatMessagesQuery = chatMessagesQuery.eq('company_id', companyId);
             contractsQuery = contractsQuery.eq('company_id', companyId);
+            clientsQuery = clientsQuery.eq('company_id', companyId);
+            transfersQuery = transfersQuery.eq('company_id', companyId);
+            deliveriesQuery = deliveriesQuery.eq('company_id', companyId);
+            fuelLogsQuery = fuelLogsQuery.eq('company_id', companyId);
             affiliatesQuery = affiliatesQuery.eq('company_id', companyId);
             // Managers don't see other companies
           }
 
           const [
-            { data: drivers },
-            { data: vehicles },
-            { data: expenses },
-            { data: rentals },
-            { data: users },
-            { data: payments },
-            { data: earningImports },
-            { data: settings },
-            { data: companies },
-            { data: maintenances },
-            { data: claims },
-            { data: inventoryItems },
-            { data: chatMessages },
-            { data: contracts },
-            { data: affiliates }
+            drivers, vehicles, expenses, rentals, users, 
+            payments, earningImports, settings, companies, 
+            maintenances, claims, inventoryItems, chatMessages, 
+            contracts, clients, transfers, deliveries, fuelLogs, affiliates
           ] = await Promise.all([
-            driversQuery,
-            vehiclesQuery,
-            expensesQuery,
-            rentalsQuery,
-            usersQuery,
-            paymentsQuery,
-            earningImportsQuery,
-            settingsQuery,
+            driversQuery, vehiclesQuery, expensesQuery, rentalsQuery, usersQuery,
+            paymentsQuery, earningImportsQuery, settingsQuery, 
             isMaster ? companiesQuery : Promise.resolve({ data: [] }),
-            maintenancesQuery,
-            claimsQuery,
-            inventoryItemsQuery,
-            chatMessagesQuery,
-            contractsQuery,
-            affiliatesQuery
+            maintenancesQuery, claimsQuery, inventoryItemsQuery, chatMessagesQuery,
+            contractsQuery, clientsQuery, transfersQuery, deliveriesQuery, fuelLogsQuery, affiliatesQuery
           ]);
 
-          if (drivers) set({ drivers });
-          if (vehicles) set({ vehicles });
-          if (expenses) set({ expenses });
-          if (rentals) set({ rentals });
-          if (users) set({ users });
-          if (payments) set({ payments });
-          if (earningImports) set({ earningImports });
-          if (settings && settings.length > 0) set({ settings: settings[0] });
-          if (companies) set({ companies });
-          if (maintenances) set({ maintenances });
-          if (claims) set({ claims });
-          if (inventoryItems) set({ inventoryItems });
-          if (chatMessages) set({ chatMessages });
-          if (contracts) set({ contracts });
-          if (affiliates) set({ affiliates });
+          if (drivers.data) set({ drivers: drivers.data });
+          if (vehicles.data) set({ vehicles: vehicles.data });
+          if (expenses.data) set({ expenses: expenses.data });
+          if (rentals.data) set({ rentals: rentals.data });
+          if (users.data) set({ users: users.data });
+          if (payments.data) set({ payments: payments.data });
+          if (earningImports.data) set({ earningImports: earningImports.data });
+          if (settings.data && settings.data.length > 0) set({ settings: settings.data[0] });
+          if (companies.data) set({ companies: companies.data });
+          if (maintenances.data) set({ maintenances: maintenances.data });
+          if (claims.data) set({ claims: claims.data });
+          if (inventoryItems.data) set({ inventoryItems: inventoryItems.data });
+          if (chatMessages.data) set({ chatMessages: chatMessages.data });
+          if (contracts.data) set({ contracts: contracts.data });
+          if (clients.data) set({ clients: clients.data });
+          if (transfers.data) set({ transfers: transfers.data });
+          if (deliveries.data) set({ deliveries: deliveries.data });
+          if (fuelLogs.data) set({ fuelLogs: fuelLogs.data });
+          if (affiliates.data) set({ affiliates: affiliates.data });
         } catch (error) {
           console.error('Error fetching from Supabase:', error);
         } finally {

@@ -237,6 +237,76 @@ export interface Contract {
   document_url: string;
 }
 
+export interface Client {
+  id: string;
+  company_id: string;
+  name: string;
+  nif?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  type: 'hotel' | 'agency' | 'restaurant' | 'individual' | 'corporate';
+  created_at: string;
+}
+
+export interface Transfer {
+  id: string;
+  company_id: string;
+  client_id?: string;
+  driver_id?: string;
+  vehicle_id?: string;
+  pickup_location: string;
+  dropoff_location: string;
+  scheduled_at: string;
+  flight_number?: string;
+  flight_status?: 'on_time' | 'delayed' | 'landed' | 'unknown';
+  estimated_arrival?: string;
+  passengers: number;
+  price: number;
+  distance_km?: number;
+  estimated_duration_min?: number;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'canceled';
+  notes?: string;
+  completed_at?: string;
+  proof_url?: string;
+  created_at: string;
+}
+
+export interface Delivery {
+  id: string;
+  company_id: string;
+  client_id?: string;
+  driver_id?: string;
+  vehicle_id?: string;
+  pickup_location: string;
+  dropoff_location: string;
+  scheduled_at: string;
+  package_description?: string;
+  priority: 'low' | 'normal' | 'urgent';
+  price: number;
+  distance_km?: number;
+  estimated_duration_min?: number;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'canceled';
+  notes?: string;
+  completed_at?: string;
+  proof_url?: string;
+  created_at: string;
+}
+
+export interface FuelLog {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  driver_id: string;
+  date: string;
+  odometer: number;
+  liters_or_kwh: number;
+  total_cost: number;
+  location?: string;
+  receipt_url?: string;
+  created_at: string;
+}
+
 export interface Affiliate {
   id: string;
   referrer_company_id: string;

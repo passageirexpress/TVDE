@@ -1163,6 +1163,54 @@ async function startServer() {
     }
   });
 
+  // Flight Status Endpoint (Aviationstack)
+  app.get("/api/flights/status", async (req, res) => {
+    const { flightNumber } = req.query;
+    const apiKey = process.env.VITE_AVIATIONSTACK_API_KEY;
+
+    if (!flightNumber) return res.status(400).json({ error: "Número do voo é obrigatório" });
+    
+    if (!apiKey) {
+      // Mock data if no API key
+      return res.json({
+        status: Math.random() > 0.7 ? 'delayed' : 'on_time',
+        estimated_arrival: new Date(Date.now() + 3600000).toISOString(),
+        departure_airport: 'LIS'
+      });
+    }
+
+    try {
+      const response = await axios.get(`http://api.aviationstack.com/v1/flights`, {
+        params: {
+          access_key: apiKey,
+          flight_iata: flightNumber
+        }
+      });
+
+      const data = response.data;
+      if (data.data && data.data.length > 0) {
+        const flight = data.data[0];
+        const status = flight.flight_status;
+        
+        let mappedStatus = 'unknown';
+        if (status === 'scheduled' || status === 'active') mappedStatus = 'on_time';
+        if (status === 'landed') mappedStatus = 'landed';
+        
+        res.json({
+          status: mappedStatus,
+          estimated_arrival: flight.arrival.estimated,
+          actual_arrival: flight.arrival.actual,
+          departure_airport: flight.departure.iata
+        });
+      } else {
+        res.json({ status: 'unknown' });
+      }
+    } catch (error: any) {
+      console.error("Flight API Error:", error.message);
+      res.status(500).json({ error: "Erro ao consultar API de voos" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

@@ -17,7 +17,13 @@ import {
   Wrench,
   ShieldAlert,
   MessageSquare,
-  Share2
+  Truck,
+  Package,
+  MapPin,
+  Users as UsersIcon,
+  Briefcase,
+  Share2,
+  Fuel
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -26,6 +32,9 @@ import { useAuthStore } from '../store/useAuthStore';
 const adminItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: BarChart3, label: 'Desempenho', path: '/dashboard/performance' },
+  { icon: Truck, label: 'Serviços', path: '/dashboard/services' },
+  { icon: Briefcase, label: 'Clientes B2B', path: '/dashboard/clients' },
+  { icon: MapPin, label: 'Mapa da Frota', path: '/dashboard/fleet-map' },
   { icon: Car, label: 'Frota', path: '/dashboard/fleet' },
   { icon: Users, label: 'Motoristas', path: '/dashboard/drivers' },
   { icon: FileText, label: 'Contratos', path: '/dashboard/contracts' },
@@ -35,6 +44,7 @@ const adminItems = [
   { icon: MessageSquare, label: 'Chat Equipa', path: '/dashboard/chat' },
   { icon: Euro, label: 'Financeiro', path: '/dashboard/finance' },
   { icon: FileText, label: 'Despesas', path: '/dashboard/expenses' },
+  { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
   { icon: Car, label: 'Aluguel', path: '/dashboard/rentals' },
   { icon: FileText, label: 'Relatórios', path: '/dashboard/reports' },
   { icon: Shield, label: 'Usuários', path: '/dashboard/users' },
@@ -56,6 +66,7 @@ const driverItems = [
   { icon: LayoutDashboard, label: 'Meus Ganhos', path: '/dashboard/driver-panel' },
   { icon: MessageSquare, label: 'Chat Suporte', path: '/dashboard/chat' },
   { icon: ShieldAlert, label: 'Reportar Sinistro', path: '/dashboard/claims' },
+  { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
   { icon: FileText, label: 'Minhas Despesas', path: '/dashboard/expenses' },
   { icon: Car, label: 'Aluguel de Carros', path: '/dashboard/rentals' },
   { icon: Car, label: 'Meu Veículo', path: '/dashboard/vehicles' },

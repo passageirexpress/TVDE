@@ -22,6 +22,12 @@ import {
   PlusCircle,
   MessageSquare,
   ShieldAlert,
+  Package,
+  MapPin,
+  Navigation,
+  CheckCircle,
+  Play,
+  Plane,
   Archive
 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
@@ -71,7 +77,7 @@ const performanceData = [
 
 export default function DriverPanel() {
   const user = useAuthStore(state => state.user);
-  const { expenses, vehicles, drivers, payments, syncDriverEarnings, earningImports } = useDataStore();
+  const { expenses, vehicles, drivers, payments, syncDriverEarnings, earningImports, transfers, deliveries, updateTransfer, updateDelivery } = useDataStore();
   const [filter, setFilter] = useState('all');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -90,6 +96,11 @@ export default function DriverPanel() {
   const myVehicle = vehicles.find(v => v.current_driver_id === user?.id);
   const myDriverData = drivers.find(d => d.id === user?.id);
   const myPayments = payments.filter(p => p.driver_id === user?.id);
+  const myServices = [
+    ...transfers.filter(t => t.driver_id === user?.id),
+    ...deliveries.filter(d => d.driver_id === user?.id)
+  ].sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
   const hasUnprocessedEarnings = earningImports.some(ei => ei.driver_id === user?.id && !ei.processed);
 
   const expiringDocs = [
@@ -194,6 +205,26 @@ export default function DriverPanel() {
   });
 
   const totalBalance = filteredHistory.reduce((acc, curr) => acc + curr.net_amount, 0);
+
+  const handleUpdateServiceStatus = async (service: any, newStatus: string) => {
+    try {
+      if ('flight_number' in service) {
+        updateTransfer(service.id, { 
+          status: newStatus as any,
+          completed_at: newStatus === 'completed' ? new Date().toISOString() : undefined
+        });
+      } else {
+        updateDelivery(service.id, { 
+          status: newStatus as any,
+          completed_at: newStatus === 'completed' ? new Date().toISOString() : undefined
+        });
+      }
+      toast.success(`Serviço atualizado para: ${newStatus === 'in_progress' ? 'Em Curso' : 'Concluído'}`);
+    } catch (error) {
+      toast.error('Erro ao atualizar serviço');
+    }
+  };
+
   const pendingBalance = filteredHistory.filter(h => h.status !== 'paid').reduce((acc, curr) => acc + curr.net_amount, 0);
   const paidBalance = filteredHistory.filter(h => h.status === 'paid').reduce((acc, curr) => acc + curr.net_amount, 0);
 
@@ -359,6 +390,92 @@ export default function DriverPanel() {
 
       {/* Balance Summary Section */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Services/Tasks Section - Mobile First */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Meus Serviços Agendados</h2>
+            <span className="text-[10px] font-black bg-sidebar text-white px-2 py-1 rounded-full uppercase tracking-widest">
+              {myServices.filter(s => s.status !== 'completed' && s.status !== 'canceled').length} Pendentes
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myServices
+              .filter(s => s.status !== 'completed' && s.status !== 'canceled')
+              .map(service => (
+                <div key={service.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={cn(
+                      "p-3 rounded-2xl",
+                      'flight_number' in service ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+                    )}>
+                      {'flight_number' in service ? <Plane className="w-6 h-6" /> : <Package className="w-6 h-6" />}
+                    </div>
+                    <div className="text-right">
+                      <span className={cn(
+                        "text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter",
+                        service.status === 'in_progress' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                      )}>
+                        {service.status === 'in_progress' ? 'Em Curso' : 'Agendado'}
+                      </span>
+                      <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
+                        {new Date(service.scheduled_at).toLocaleDateString('pt-PT')} • {new Date(service.scheduled_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Recolha</p>
+                        <p className="text-sm font-bold text-gray-900">{service.pickup_location}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Navigation className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Destino</p>
+                        <p className="text-sm font-bold text-gray-900">{service.dropoff_location}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {service.status === 'scheduled' ? (
+                      <button 
+                        onClick={() => handleUpdateServiceStatus(service, 'in_progress')}
+                        className="flex-1 bg-sidebar text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all"
+                      >
+                        <Play className="w-4 h-4" />
+                        Iniciar Serviço
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleUpdateServiceStatus(service, 'completed')}
+                        className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Concluir Serviço
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(service.dropoff_location)}`, '_blank')}
+                      className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 hover:text-gray-600 transition-all"
+                    >
+                      <Navigation className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            {myServices.filter(s => s.status !== 'completed' && s.status !== 'canceled').length === 0 && (
+              <div className="col-span-full p-12 bg-white rounded-[32px] border border-dashed border-gray-200 text-center">
+                <p className="text-gray-400 font-medium italic">Nenhum serviço agendado para hoje.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute -right-8 -top-8 w-48 h-48 bg-sidebar/5 rounded-full group-hover:scale-110 transition-transform duration-700"></div>
           <div className="relative z-10">

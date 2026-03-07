@@ -12,6 +12,11 @@ import {
   Database,
   CheckCircle2,
   XCircle,
+  Plane,
+  Package,
+  Truck,
+  Clock as ClockIcon,
+  ChevronRight,
   RefreshCw
 } from 'lucide-react';
 import { 
@@ -53,7 +58,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, link }: any) =>
 );
 
 export default function Dashboard() {
-  const { drivers, vehicles, payments, expenses, fetchFromSupabase, isLoading } = useDataStore();
+  const { drivers, vehicles, payments, expenses, transfers, deliveries, fetchFromSupabase, isLoading } = useDataStore();
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -125,6 +130,9 @@ export default function Dashboard() {
   ];
 
   const pendingPaymentsTotal = payments.filter(p => p.status === 'pending').reduce((acc, p) => acc + (p.net_amount || p.net || 0), 0);
+
+  const activeTransfers = transfers.filter(t => t.status === 'scheduled' || t.status === 'in_progress');
+  const activeDeliveries = deliveries.filter(d => d.status === 'scheduled' || d.status === 'in_progress');
 
   const user = useAuthStore(state => state.user);
   const { companies } = useDataStore();
@@ -355,14 +363,65 @@ export default function Dashboard() {
           link="/dashboard/finance"
         />
         <StatCard 
-          title="IVA Estimado (6%)" 
-          value={formatCurrency(totalIVA)} 
-          icon={AlertCircle} 
-          link="/dashboard/finance"
+          title="Serviços Ativos" 
+          value={(activeTransfers.length + activeDeliveries.length).toString()} 
+          icon={Truck} 
+          link="/dashboard/services"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Live Operations Widget */}
+        <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Operações em Tempo Real</h3>
+              <p className="text-sm text-gray-500 font-medium">Próximos Transfers e Entregas</p>
+            </div>
+            <Link to="/dashboard/services" className="text-xs font-black text-sidebar hover:underline uppercase tracking-widest">Ver Todos</Link>
+          </div>
+          <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
+            {[...activeTransfers, ...activeDeliveries]
+              .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+              .slice(0, 5)
+              .map(service => (
+                <div key={service.id} className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between group hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "p-3 rounded-xl",
+                      'flight_number' in service ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"
+                    )}>
+                      {'flight_number' in service ? <Plane className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-gray-900">
+                        {'flight_number' in service ? `Transfer ${service.flight_number || ''}` : `Entrega: ${service.pickup_location.split(',')[0]}`}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <ClockIcon className="w-3 h-3 text-gray-400" />
+                        <span className="text-[10px] font-bold text-gray-500 uppercase">
+                          {new Date(service.scheduled_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className={cn(
+                          "text-[9px] font-black px-2 py-0.5 rounded-full uppercase",
+                          service.status === 'in_progress' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                        )}>
+                          {service.status === 'in_progress' ? 'Em Curso' : 'Agendado'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
+                </div>
+              ))}
+            {activeTransfers.length === 0 && activeDeliveries.length === 0 && (
+              <div className="p-12 text-center">
+                <p className="text-sm text-gray-400 font-medium italic">Sem operações ativas no momento.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* IVA Table and Projections */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold mb-6">Gestão de IVA (6%)</h3>

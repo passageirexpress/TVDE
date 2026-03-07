@@ -31,7 +31,11 @@ import Landing from './pages/Landing';
 import Register from './pages/Register';
 import Companies from './pages/Companies';
 import Maintenance from './pages/Maintenance';
+import FleetMap from './pages/FleetMap';
 import Claims from './pages/Claims';
+import Services from './pages/Services';
+import Clients from './pages/Clients';
+import FuelLogs from './pages/FuelLogs';
 import Chat from './pages/Chat';
 import Affiliates from './pages/Affiliates';
 import Terms from './pages/Terms';
@@ -134,6 +138,11 @@ export default function App() {
               <Fleet />
             </ProtectedRoute>
           } />
+          <Route path="fleet-map" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <FleetMap />
+            </ProtectedRoute>
+          } />
           <Route path="drivers" element={
             <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
               <Drivers />
@@ -155,6 +164,21 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="claims" element={<Claims />} />
+          <Route path="services" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Services />
+            </ProtectedRoute>
+          } />
+          <Route path="clients" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Clients />
+            </ProtectedRoute>
+          } />
+          <Route path="fuel-logs" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance', 'driver']}>
+              <FuelLogs />
+            </ProtectedRoute>
+          } />
           <Route path="chat" element={<Chat />} />
           <Route path="affiliates" element={
             <ProtectedRoute allowedRoles={['master']}>
