@@ -107,6 +107,7 @@ interface DataState {
   saveToSupabase: (table: string, data: any) => Promise<void>;
   uploadDocument: (file: File, path: string) => Promise<string>;
   createUserAuth: (data: any) => Promise<void>;
+  subscribeToRealtime: () => () => void;
 }
 
 const initialVehicles: Vehicle[] = [
@@ -446,6 +447,60 @@ export const useDataStore = create<DataState>()(
           console.error('Error creating user auth:', error);
           throw error;
         }
+      },
+
+      subscribeToRealtime: () => {
+        const user = useAuthStore.getState().user;
+        if (!user || !user.company_id) return () => {};
+
+        const channel = supabase
+          .channel('db-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'claims',
+              filter: `company_id=eq.${user.company_id}`
+            },
+            (payload) => {
+              const newClaim = payload.new as Claim;
+              set((state) => ({ claims: [newClaim, ...state.claims] }));
+              
+              // Only notify admins
+              if (user.role !== 'driver') {
+                const vehicle = get().vehicles.find(v => v.id === newClaim.vehicle_id);
+                toast.error(`NOVO SINISTRO: Viatura ${vehicle?.plate || ''}`, {
+                  description: newClaim.description,
+                  duration: 10000,
+                });
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'notifications',
+              filter: `company_id=eq.${user.company_id}`
+            },
+            (payload) => {
+              const newNotification = payload.new as AppNotification;
+              set((state) => ({ notifications: [newNotification, ...state.notifications] }));
+              
+              if (!newNotification.read) {
+                toast.info(newNotification.title, {
+                  description: newNotification.message,
+                });
+              }
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
       },
 
       // Earnings
