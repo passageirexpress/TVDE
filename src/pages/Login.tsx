@@ -47,8 +47,6 @@ export default function Login() {
       });
 
       if (error || !data.session) {
-        if (error) console.log("Auth Error:", error.message);
-        
         if (error?.message === 'Failed to fetch') {
           throw new Error('Falha de conexão com o servidor. Verifique se o URL do Supabase está correto (deve começar com https://) e se a sua ligação à internet está ativa.');
         }

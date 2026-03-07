@@ -220,7 +220,7 @@ async function startServer() {
 
   // Viva Wallet Endpoints
   app.post("/api/viva/create-order", async (req, res) => {
-    console.log("[VIVA] Recebida solicitação de criação de ordem:", req.body);
+    // console.log("[VIVA] Recebida solicitação de criação de ordem:", req.body);
     const { amount, planId, companyId, customerEmail, customerName } = req.body;
 
     if (!amount || !planId || !companyId) {
@@ -505,7 +505,7 @@ async function startServer() {
   app.post("/api/auth/register-company", async (req, res) => {
     const { company_name, company_nif, admin_email, admin_password, admin_name, plan } = req.body;
 
-    console.log(`[REGISTER] Iniciando registro para ${admin_email} (${company_name}) - Plano: ${plan || 'free'}`);
+    // console.log(`[REGISTER] Iniciando registro para ${admin_email} (${company_name}) - Plano: ${plan || 'free'}`);
 
     if (!supabaseAdmin) {
       console.error("[REGISTER ERROR] Supabase Admin client not initialized");
@@ -515,7 +515,7 @@ async function startServer() {
     try {
       // 1. Create the company
       const companyId = crypto.randomUUID();
-      console.log(`[REGISTER] Gerado UUID para empresa: ${companyId}`);
+      // console.log(`[REGISTER] Gerado UUID para empresa: ${companyId}`);
 
       const { data: company, error: companyError } = await supabaseAdmin
         .from('companies')
@@ -536,7 +536,7 @@ async function startServer() {
         throw companyError;
       }
 
-      console.log(`[REGISTER] Empresa criada com sucesso: ${companyId}`);
+      // console.log(`[REGISTER] Empresa criada com sucesso: ${companyId}`);
 
       // 2. Create the admin user in Supabase Auth
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -553,7 +553,7 @@ async function startServer() {
         throw authError;
       }
 
-      console.log(`[REGISTER] Usuário Auth criado: ${authData.user.id}`);
+      // console.log(`[REGISTER] Usuário Auth criado: ${authData.user.id}`);
 
       // 3. Create the user profile in custom table
       const { error: profileError } = await supabaseAdmin
@@ -574,7 +574,7 @@ async function startServer() {
         throw profileError;
       }
 
-      console.log(`[REGISTER] Registro completo para ${admin_email}`);
+      // console.log(`[REGISTER] Registro completo para ${admin_email}`);
 
       // 4. Send Welcome Email
       const resend = getResendClient();

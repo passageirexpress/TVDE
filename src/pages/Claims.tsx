@@ -14,16 +14,60 @@ import {
   Camera,
   FileText,
   MoreVertical,
+  X,
   Car
 } from 'lucide-react';
 import { useDataStore } from '../store/useDataStore';
 import { Claim } from '../types';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 export default function ClaimsPage() {
   const { vehicles, drivers, claims, addClaim, updateClaim } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [newClaim, setNewClaim] = useState<Partial<Claim>>({
+    date: new Date().toISOString().split('T')[0],
+    status: 'reported',
+    photos: []
+  });
+
+  const handleAddClaim = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClaim.vehicle_id || !newClaim.driver_id || !newClaim.description) {
+      toast.error('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const claim: Claim = {
+        id: crypto.randomUUID(),
+        vehicle_id: newClaim.vehicle_id!,
+        driver_id: newClaim.driver_id!,
+        date: newClaim.date!,
+        location: newClaim.location || 'Não especificado',
+        description: newClaim.description!,
+        status: 'reported',
+        photos: [],
+        created_at: new Date().toISOString()
+      };
+
+      await addClaim(claim);
+      setShowAddModal(false);
+      setNewClaim({
+        date: new Date().toISOString().split('T')[0],
+        status: 'reported',
+        photos: []
+      });
+      toast.success('Sinistro reportado com sucesso! Os administradores foram notificados.');
+    } catch (error: any) {
+      toast.error('Erro ao reportar sinistro: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const filteredClaims = claims.filter(c => {
     const vehicle = vehicles.find(v => v.id === c.vehicle_id);
@@ -220,6 +264,109 @@ export default function ClaimsPage() {
           </table>
         </div>
       </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Reportar Ocorrência</h2>
+                <p className="text-sm text-gray-500 font-medium">Registe um novo sinistro ou incidente na frota</p>
+              </div>
+              <button 
+                onClick={() => setShowAddModal(false)} 
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+            <form onSubmit={handleAddClaim} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Veículo</label>
+                  <select 
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                    value={newClaim.vehicle_id || ''}
+                    onChange={e => setNewClaim({...newClaim, vehicle_id: e.target.value})}
+                  >
+                    <option value="">Selecione o Veículo</option>
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.plate} - {v.brand} {v.model}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Motorista</label>
+                  <select 
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                    value={newClaim.driver_id || ''}
+                    onChange={e => setNewClaim({...newClaim, driver_id: e.target.value})}
+                  >
+                    <option value="">Selecione o Motorista</option>
+                    {drivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Data da Ocorrência</label>
+                  <input 
+                    required type="date"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                    value={newClaim.date || ''}
+                    onChange={e => setNewClaim({...newClaim, date: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Localização</label>
+                  <input 
+                    required
+                    placeholder="Ex: Av. da Liberdade, Lisboa"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                    value={newClaim.location || ''}
+                    onChange={e => setNewClaim({...newClaim, location: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Descrição Detalhada</label>
+                <textarea 
+                  required
+                  rows={4}
+                  placeholder="Descreva o que aconteceu com o máximo de detalhe possível..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium resize-none"
+                  value={newClaim.description || ''}
+                  onChange={e => setNewClaim({...newClaim, description: e.target.value})}
+                />
+              </div>
+
+              <div className="pt-6 flex gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20 disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isSaving ? (
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    'Reportar Sinistro'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

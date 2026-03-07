@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { 
   Routes, 
   Route, 
@@ -77,6 +77,7 @@ export default function App() {
   const setLoading = useAuthStore(state => state.setLoading);
   const initializeAuth = useAuthStore(state => state.initialize);
   const { drivers, vehicles, rentals, addNotification, notifications, rehydrateData } = useDataStore();
+  const hasCheckedExpirations = useRef(false);
 
   useEffect(() => {
     initializeAuth();
@@ -84,14 +85,21 @@ export default function App() {
   }, [initializeAuth, rehydrateData]);
 
   useEffect(() => {
+    if (!drivers.length && !vehicles.length) return;
+    
     const timer = setTimeout(() => {
       setLoading(false);
-      // Check for document expirations
-      checkDocumentExpirations(drivers, vehicles, addNotification, notifications);
-      checkRentalExpirations(rentals, vehicles, drivers, addNotification, notifications);
-    }, 500);
+      
+      // Only check once per session or when data significantly changes
+      if (!hasCheckedExpirations.current) {
+        checkDocumentExpirations(drivers, vehicles, addNotification, notifications);
+        checkRentalExpirations(rentals, vehicles, drivers, addNotification, notifications);
+        hasCheckedExpirations.current = true;
+      }
+    }, 1000);
+    
     return () => clearTimeout(timer);
-  }, [drivers, vehicles, rentals, addNotification, notifications, setLoading]);
+  }, [drivers.length, vehicles.length, rentals.length, addNotification, setLoading]);
 
   return (
     <BrowserRouter>

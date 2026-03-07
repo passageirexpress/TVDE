@@ -157,8 +157,6 @@ export default function Finance() {
       if (!response.ok) throw new Error('Falha ao sincronizar dados da Uber');
       const data = await response.json();
       
-      console.log('Uber Sync Data Received:', data);
-
       if (data.status === 'connected' && data.drivers?.length === 0) {
         toast.info('Conectado à API da Uber com sucesso! No entanto, não foram encontrados novos motoristas ou veículos para sincronizar neste momento.');
         return;
@@ -277,8 +275,6 @@ export default function Finance() {
       if (!response.ok) throw new Error('Falha ao sincronizar dados da Bolt');
       const data = await response.json();
       
-      console.log('Bolt Sync Data Received:', data);
-
       // Process Bolt Drivers
       const boltDrivers = data.drivers || [];
       if (boltDrivers.length > 0) {

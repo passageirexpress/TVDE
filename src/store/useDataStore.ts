@@ -517,17 +517,20 @@ export const useDataStore = create<DataState>()(
       addNotification: (n) => {
         set((state) => ({ notifications: [n, ...state.notifications] }));
         
-        // Send email notification to admin
+        // Send email notification to all admins
         const state = get();
-        const adminUser = state.users.find(u => u.role === 'admin');
-        if (adminUser && adminUser.email) {
-          sendEmailNotification(
-            adminUser.email,
-            n.title,
-            n.message,
-            state.settings?.name || 'TVDE Fleet'
-          );
-        }
+        const admins = state.users.filter(u => u.role === 'admin' && u.email);
+        
+        admins.forEach(admin => {
+          if (admin.email) {
+            sendEmailNotification(
+              admin.email,
+              n.title,
+              n.message,
+              state.settings?.name || 'TVDE Fleet'
+            );
+          }
+        });
       },
       markNotificationsAsRead: () => set((state) => ({
         notifications: state.notifications.map(n => ({ ...n, read: true }))
@@ -583,6 +586,22 @@ export const useDataStore = create<DataState>()(
       addExpense: (expense) => {
         set((state) => ({ expenses: [expense, ...state.expenses] }));
         get().saveToSupabase('expenses', expense);
+
+        // Notify admins if expense is pending
+        if (expense.status === 'pending') {
+          const state = get();
+          const driver = state.drivers.find(d => d.id === expense.driver_id);
+          const title = `Nova Despesa Pendente: ${driver?.full_name || 'Motorista'}`;
+          const message = `O motorista ${driver?.full_name} registou uma nova despesa de ${expense.amount}€ (${expense.category}).\n\nPor favor, valide no painel de despesas.`;
+          
+          get().addNotification({
+            id: `expense-new-${expense.id}`,
+            title,
+            message,
+            date: new Date().toISOString().split('T')[0],
+            read: false
+          });
+        }
       },
       updateExpense: (id, updatedExpense) => {
         set((state) => {
@@ -601,8 +620,29 @@ export const useDataStore = create<DataState>()(
       },
       updateRental: (id, updatedRental) => {
         set((state) => {
+          const oldRental = state.rentals.find(r => r.id === id);
           const rentals = state.rentals.map((r) => (r.id === id ? { ...r, ...updatedRental } : r));
           const updated = rentals.find(r => r.id === id);
+          
+          // If a driver just rented a vehicle, notify admins
+          if (oldRental?.status === 'available' && updated?.status === 'rented' && updated?.driver_id) {
+            const driver = state.drivers.find(d => d.id === updated.driver_id);
+            const vehicle = state.vehicles.find(v => v.id === updated.vehicle_id);
+            const title = `Novo Aluguel: ${vehicle?.plate}`;
+            const message = `O motorista ${driver?.full_name} alugou o veículo ${vehicle?.plate}.\n\nInício: ${updated.start_date}`;
+            
+            // Use setTimeout to avoid state updates during render if this is called in a component
+            setTimeout(() => {
+              get().addNotification({
+                id: `rental-new-${id}`,
+                title,
+                message,
+                date: new Date().toISOString().split('T')[0],
+                read: false
+              });
+            }, 0);
+          }
+
           if (updated) get().saveToSupabase('rentals', updated);
           return { rentals };
         });
@@ -627,23 +667,25 @@ export const useDataStore = create<DataState>()(
         set((state) => ({ claims: [claim, ...state.claims] }));
         get().saveToSupabase('claims', claim);
 
-        // Notify admin about new claim
+        // Notify all admins about new claim
         const state = get();
-        const adminUser = state.users.find(u => u.role === 'admin');
+        const admins = state.users.filter(u => u.role === 'admin' && u.email);
         const vehicle = state.vehicles.find(v => v.id === claim.vehicle_id);
         const driver = state.drivers.find(d => d.id === claim.driver_id);
         
-        if (adminUser && adminUser.email) {
-          const title = `Novo Sinistro Reportado: ${vehicle?.plate || 'Veículo Desconhecido'}`;
-          const message = `Um novo sinistro foi reportado.\n\nVeículo: ${vehicle?.plate}\nMotorista: ${driver?.full_name}\nData: ${claim.date}\nDescrição: ${claim.description}\n\nPor favor, verifique o sistema para mais detalhes.`;
-          
-          sendEmailNotification(
-            adminUser.email,
-            title,
-            message,
-            state.settings?.name || 'TVDE Fleet'
-          );
-        }
+        const title = `Novo Sinistro Reportado: ${vehicle?.plate || 'Veículo Desconhecido'}`;
+        const message = `Um novo sinistro foi reportado.\n\nVeículo: ${vehicle?.plate}\nMotorista: ${driver?.full_name}\nData: ${claim.date}\nDescrição: ${claim.description}\n\nPor favor, verifique o sistema para mais detalhes.`;
+
+        admins.forEach(admin => {
+          if (admin.email) {
+            sendEmailNotification(
+              admin.email,
+              title,
+              message,
+              state.settings?.name || 'TVDE Fleet'
+            );
+          }
+        });
       },
       updateClaim: (id, updated) => {
         set((state) => {

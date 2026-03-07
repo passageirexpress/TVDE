@@ -205,6 +205,7 @@ export interface Claim {
   status: 'reported' | 'in_progress' | 'resolved' | 'rejected';
   photos: string[];
   report_url?: string;
+  created_at?: string;
 }
 
 export interface InventoryItem {

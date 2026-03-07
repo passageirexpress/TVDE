@@ -139,7 +139,7 @@ export default function DriverPanel() {
     setIsSyncing(false);
     setShowNotification(true);
     if (audioRef.current) {
-      audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+      audioRef.current.play().catch(() => {});
     }
   };
 

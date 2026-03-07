@@ -9,8 +9,6 @@ if (supabaseUrl && !supabaseUrl.startsWith('http')) {
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials missing. Please check your environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).');
-} else {
-  console.log('Supabase initialized with URL:', supabaseUrl);
 }
 
 // Dummy JWT for placeholder mode to avoid 'atob' errors in supabase-js
