@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Toaster, toast } from 'sonner';
 import { 
   Users, 
   Car, 
@@ -77,9 +78,9 @@ export default function Dashboard() {
       }
 
       await fetchFromSupabase();
-      alert('Sincronização concluída com sucesso!');
+      toast.success('Sincronização concluída com sucesso!');
     } catch (error: any) {
-      alert('Erro na sincronização: ' + error.message);
+      toast.error('Erro na sincronização: ' + error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -160,31 +161,52 @@ export default function Dashboard() {
       };
     });
 
-  const chartData = [
-    { name: 'Jan', revenue: 4500, uber: 3000, bolt: 1500 },
-    { name: 'Fev', revenue: 5200, uber: 3200, bolt: 2000 },
-    { name: 'Mar', revenue: 4800, uber: 2800, bolt: 2000 },
-    { name: 'Abr', revenue: 6100, uber: 4000, bolt: 2100 },
-    { name: 'Mai', revenue: 5900, uber: 3800, bolt: 2100 },
-    { name: 'Jun', revenue: totalGrossRevenue, uber: payments.filter(p => p.platform === 'uber').reduce((acc, p) => acc + (p.gross_revenue || 0), 0) || totalGrossRevenue * 0.6, bolt: payments.filter(p => p.platform === 'bolt').reduce((acc, p) => acc + (p.gross_revenue || 0), 0) || totalGrossRevenue * 0.4 },
-  ];
+  const chartData = useMemo(() => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const currentMonth = new Date().getMonth();
+    const data = [];
 
-  const vehicleProfitData = vehicles.slice(0, 5).map(v => {
-    const vehicleRevenue = payments
-      .filter(p => p.driver_id === v.current_driver_id)
-      .reduce((acc, p) => acc + (p.gross_revenue || 0), 0);
-    
-    const vehicleExpenses = expenses
-      .filter(e => e.driver_id === v.current_driver_id || e.description.includes(v.plate))
-      .reduce((acc, e) => acc + e.amount, 0);
+    for (let i = 5; i >= 0; i--) {
+      const monthIdx = (currentMonth - i + 12) % 12;
+      const monthName = months[monthIdx];
+      
+      const monthPayments = payments.filter(p => {
+        const pDate = new Date(p.date || p.payment_date || p.period_start);
+        return pDate.getMonth() === monthIdx;
+      });
 
-    return {
-      name: v.plate,
-      revenue: vehicleRevenue || Math.random() * 1000 + 500,
-      expenses: vehicleExpenses || Math.random() * 300 + 100,
-      profit: (vehicleRevenue || 1000) - (vehicleExpenses || 200)
-    };
-  });
+      const uber = monthPayments.filter(p => p.platform === 'uber').reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
+      const bolt = monthPayments.filter(p => p.platform === 'bolt').reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
+      const total = uber + bolt;
+
+      data.push({
+        name: monthName,
+        revenue: total,
+        uber: uber,
+        bolt: bolt
+      });
+    }
+    return data;
+  }, [payments]);
+
+  const vehicleProfitData = useMemo(() => {
+    return vehicles.slice(0, 5).map(v => {
+      const vehicleRevenue = payments
+        .filter(p => p.driver_id === v.current_driver_id)
+        .reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
+      
+      const vehicleExpenses = expenses
+        .filter(e => e.driver_id === v.current_driver_id || (e.description && e.description.includes(v.plate)))
+        .reduce((acc, e) => acc + e.amount, 0);
+
+      return {
+        name: v.plate,
+        revenue: vehicleRevenue,
+        expenses: vehicleExpenses,
+        profit: vehicleRevenue - vehicleExpenses
+      };
+    });
+  }, [vehicles, payments, expenses]);
 
   const topDrivers = [...drivers]
     .sort((a, b) => (b.rating_uber + b.rating_bolt) - (a.rating_uber + a.rating_bolt))
@@ -495,7 +517,7 @@ export default function Dashboard() {
                 criticalAlerts.map((alertItem, idx) => (
                   <div 
                     key={idx}
-                    onClick={() => alert('Redirecionando para detalhes do veículo...')}
+                    onClick={() => toast.info('Redirecionando para detalhes do veículo...')}
                     className={cn(
                       "flex gap-4 p-4 rounded-xl border cursor-pointer transition-colors",
                       alertItem.type === 'red' ? "bg-red-50 border-red-100 hover:bg-red-100" : "bg-amber-50 border-amber-100 hover:bg-amber-100"

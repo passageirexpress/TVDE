@@ -1023,24 +1023,11 @@ async function startServer() {
       const clientId = settings?.bolt_client_id;
       const clientSecret = settings?.bolt_client_secret;
 
-      // If credentials are not configured, return mock data for demo purposes
+      // If credentials are not configured, return error
       if (!clientId || !clientSecret) {
-        console.log(`Bolt credentials not configured for company ${profile.company_id}. Returning mock data.`);
-        return res.json({
-          drivers: [
-            { id: 'mock-b1', name: 'João Silva (Bolt)', email: 'joao.bolt@example.com', phone: '912345678', tax_id: '123456789' },
-            { id: 'mock-b2', name: 'Maria Santos (Bolt)', email: 'maria.bolt@example.com', phone: '912345679', tax_id: '987654321' }
-          ],
-          vehicles: [
-            { id: 'mock-bv1', plate_number: 'AA-00-BB', make: 'Toyota', model: 'Corolla', year: 2022 },
-            { id: 'mock-bv2', plate_number: 'CC-11-DD', make: 'Renault', model: 'Zoe', year: 2023 }
-          ],
-          earnings: [
-            { id: 'mock-be1', driver_name: 'João Silva (Bolt)', amount: '450.50', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
-            { id: 'mock-be2', driver_name: 'Maria Santos (Bolt)', amount: '580.20', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
-          ],
-          isMock: true,
-          timestamp: new Date().toISOString()
+        return res.status(400).json({ 
+          error: "Credenciais da Bolt não configuradas.",
+          details: "Por favor, configure o Client ID e Client Secret nas definições da empresa."
         });
       }
 
@@ -1148,24 +1135,11 @@ async function startServer() {
       const clientId = settings?.uber_client_id;
       const clientSecret = settings?.uber_client_secret;
 
-      // If credentials are not configured, return mock data for demo purposes
+      // If credentials are not configured, return error
       if (!clientId || !clientSecret) {
-        console.log(`Uber credentials not configured for company ${profile.company_id}. Returning mock data.`);
-        return res.json({
-          drivers: [
-            { id: 'mock-u1', name: 'Pedro Costa (Uber)', email: 'pedro.uber@example.com', phone: '912345680', tax_id: '111222333' },
-            { id: 'mock-u2', name: 'Ana Oliveira (Uber)', email: 'ana.uber@example.com', phone: '912345681', tax_id: '444555666' }
-          ],
-          vehicles: [
-            { id: 'mock-uv1', plate_number: 'EE-22-FF', make: 'Mercedes', model: 'E-Class', year: 2023 },
-            { id: 'mock-uv2', plate_number: 'GG-33-HH', make: 'Tesla', model: 'Model 3', year: 2023 }
-          ],
-          earnings: [
-            { id: 'mock-ue1', driver_name: 'Pedro Costa (Uber)', amount: '620.00', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' },
-            { id: 'mock-ue2', driver_name: 'Ana Oliveira (Uber)', amount: '480.00', date: new Date().toISOString().split('T')[0], period: 'Semana Atual' }
-          ],
-          isMock: true,
-          timestamp: new Date().toISOString()
+        return res.status(400).json({ 
+          error: "Credenciais da Uber não configuradas.",
+          details: "Por favor, configure o Client ID e Client Secret nas definições da empresa."
         });
       }
 

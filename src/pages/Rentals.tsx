@@ -15,6 +15,7 @@ import {
   Edit2,
   Save
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuthStore } from '../store/useAuthStore';
 import { Rental, Vehicle } from '../types';
@@ -56,13 +57,13 @@ export default function Rentals() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vehicle_id || !formData.daily_rate) {
-      alert('Por favor, preencha todos os campos.');
+      toast.error('Por favor, preencha todos os campos.');
       return;
     }
 
     if (editingRental) {
       updateRental(editingRental.id, formData);
-      alert('Aluguel atualizado com sucesso!');
+      toast.success('Aluguel atualizado com sucesso!');
     } else {
       const rental: Rental = {
         id: crypto.randomUUID(),
@@ -72,7 +73,7 @@ export default function Rentals() {
         status: 'available'
       };
       addRental(rental);
-      alert('Veículo disponibilizado para aluguel com sucesso!');
+      toast.success('Veículo disponibilizado para aluguel com sucesso!');
     }
     setShowModal(false);
   };
@@ -81,7 +82,7 @@ export default function Rentals() {
     const rental = rentals.find(r => r.id === rentalId);
     if (rental) {
       const weeklyCost = rental.daily_rate * 7;
-      alert(`Pedido de aluguel enviado! Um gasto semanal de ${formatCurrency(weeklyCost)} foi adicionado às suas despesas.`);
+      toast.success(`Pedido de aluguel enviado! Um gasto semanal de ${formatCurrency(weeklyCost)} foi adicionado às suas despesas.`);
       updateRental(rentalId, { 
         status: 'rented', 
         driver_id: user?.id, 
@@ -324,9 +325,9 @@ export default function Rentals() {
                               const driverObj = drivers.find(d => d.full_name === driver);
                               if (driverObj) {
                                 approveRental(rental.id, driverObj.id, driver);
-                                alert(`Aluguel aprovado para ${driver}!`);
+                                toast.success(`Aluguel aprovado para ${driver}!`);
                               } else {
-                                alert('Motorista não encontrado no sistema.');
+                                toast.error('Motorista não encontrado no sistema.');
                               }
                             }}
                             className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -337,7 +338,7 @@ export default function Rentals() {
                           <button 
                             onClick={() => {
                               rejectRental(rental.id, driver);
-                              alert(`Solicitação de ${driver} rejeitada.`);
+                              toast.info(`Solicitação de ${driver} rejeitada.`);
                             }}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Rejeitar Solicitação"

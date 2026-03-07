@@ -15,6 +15,7 @@ import {
   Upload,
   Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -58,9 +59,9 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
       setDocuments(prev => prev.map(doc => 
         doc.id === docId ? { ...doc, url, status: 'pending' } : doc
       ));
-      alert('Documento enviado com sucesso!');
+      toast.success('Documento enviado com sucesso!');
     } catch (error: any) {
-      alert('Erro ao enviar documento: ' + error.message);
+      toast.error('Erro ao enviar documento: ' + error.message);
     } finally {
       setIsUploading(null);
     }
@@ -109,22 +110,22 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
       setDocuments(prev => prev.map(doc => 
         doc.id === docId ? { ...doc, status: newStatus } : doc
       ));
-      alert(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
+      toast.success(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
     } catch (error: any) {
-      alert('Erro: ' + error.message);
+      toast.error('Erro: ' + error.message);
     }
   };
 
   const handleSave = () => {
     if (editedDriver.password && editedDriver.password !== driver.password) {
       if (editedDriver.password.length < 6) {
-        alert('A senha deve ter no mínimo 6 caracteres.');
+        toast.error('A senha deve ter no mínimo 6 caracteres.');
         return;
       }
     }
 
     if (editedDriver.nif && !isValidNIF(editedDriver.nif)) {
-      alert('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
+      toast.error('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
       return;
     }
 
@@ -132,7 +133,7 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
       onUpdate(editedDriver);
     }
     setIsEditing(false);
-    alert('Motorista atualizado com sucesso!');
+    toast.success('Motorista atualizado com sucesso!');
   };
 
   const getStatusBadge = (status: string) => {
@@ -374,7 +375,7 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
                           </div>
                         </div>
                         <button 
-                          onClick={() => alert(`Iniciando download de: ${doc.label}`)}
+                          onClick={() => toast.info(`Iniciando download de: ${doc.label}`)}
                           className="p-2 text-gray-300 hover:text-sidebar transition-colors"
                         >
                           <Download className="w-4 h-4" />
@@ -462,7 +463,7 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
                   <span className="text-xs font-bold uppercase">Ações Rápidas</span>
                 </div>
                 <button 
-                  onClick={() => alert(`Motorista ${driver.full_name} suspenso com sucesso.`)}
+                  onClick={() => toast.success(`Motorista ${driver.full_name} suspenso com sucesso.`)}
                   className="w-full py-3 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
                 >
                   Suspender Motorista

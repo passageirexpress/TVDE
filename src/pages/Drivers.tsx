@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Plus, Search, Filter, MoreHorizontal, UserCheck, UserX, FileText, Download, ChevronLeft, ChevronRight, AlertCircle, FileSignature } from 'lucide-react';
 // @ts-ignore
 import { FixedSizeList as List } from 'react-window';
+import { toast } from 'sonner';
 import { cn, formatPercent, formatCurrency, isValidNIF } from '../lib/utils';
 import DriverDetails from '../components/DriverDetails';
 import DriverContractModal from '../components/DriverContractModal';
@@ -39,12 +40,12 @@ export default function Drivers() {
     e.preventDefault();
     
     if (newDriver.password && newDriver.password.length < 6) {
-      alert('A senha deve ter no mínimo 6 caracteres.');
+      toast.error('A senha deve ter no mínimo 6 caracteres.');
       return;
     }
 
     if (newDriver.nif && !isValidNIF(newDriver.nif)) {
-      alert('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
+      toast.error('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
       return;
     }
 
@@ -57,9 +58,9 @@ export default function Drivers() {
         role: 'driver'
       });
       setShowAddModal(false);
-      alert('Motorista adicionado com sucesso no Supabase Auth!');
+      toast.success('Motorista adicionado com sucesso!');
     } catch (error: any) {
-      alert(error.message || 'Erro ao adicionar motorista');
+      toast.error(error.message || 'Erro ao adicionar motorista');
     } finally {
       setIsSaving(false);
     }
@@ -70,7 +71,7 @@ export default function Drivers() {
     if (driver) {
       const newStatus = driver.status === 'active' ? 'suspended' : 'active';
       updateDriver(id, { status: newStatus as any });
-      alert(`Motorista ${driver.full_name} agora está ${newStatus === 'active' ? 'Ativo' : 'Suspenso'}.`);
+      toast.success(`Motorista ${driver.full_name} agora está ${newStatus === 'active' ? 'Ativo' : 'Suspenso'}.`);
     }
   };
 

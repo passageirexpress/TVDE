@@ -26,6 +26,7 @@ import {
   Cell,
   Pie
 } from 'recharts';
+import { toast } from 'sonner';
 import { formatCurrency } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
 
@@ -90,9 +91,9 @@ export default function Performance() {
       }
 
       await fetchFromSupabase();
-      alert('Sincronização concluída com sucesso!');
+      toast.success('Sincronização concluída com sucesso!');
     } catch (error: any) {
-      alert('Erro na sincronização: ' + error.message);
+      toast.error('Erro na sincronização: ' + error.message);
     } finally {
       setIsSyncing(false);
     }

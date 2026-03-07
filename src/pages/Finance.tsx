@@ -29,6 +29,7 @@ import {
   User as UserIcon
 } from 'lucide-react';
 import Papa from 'papaparse';
+import { toast } from 'sonner';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
 import { supabase } from '../lib/supabase';
@@ -50,12 +51,7 @@ interface ImportedData {
   date?: string;
 }
 
-const initialPayments = [
-  { id: '1', driver: 'João Silva', period: '16/02 - 23/02', gross: 600, net: 450, status: 'paid', date: '2026-02-23' },
-  { id: '2', driver: 'Maria Santos', period: '16/02 - 23/02', gross: 750, net: 562.5, status: 'paid', date: '2026-02-23' },
-  { id: '3', driver: 'Ana Oliveira', period: '23/02 - 02/03', gross: 400, net: 300, status: 'pending', date: '2026-03-02' },
-  { id: '4', driver: 'Pedro Costa', period: '23/02 - 02/03', gross: 225, net: 168.75, status: 'pending', date: '2026-03-02' },
-];
+const initialPayments: ImportedData[] = [];
 
 export default function Finance() {
   const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, addDriver, addVehicle, vehicles } = useDataStore();
@@ -111,7 +107,7 @@ export default function Finance() {
     try {
       const driver = drivers.find(d => d.id === payment.driver_id || d.full_name === payment.driver);
       if (!driver || !driver.email) {
-        alert('Motorista não encontrado ou sem email configurado.');
+        toast.error('Motorista não encontrado ou sem email configurado.');
         return;
       }
 
@@ -133,7 +129,7 @@ export default function Finance() {
 
       if (!response.ok) throw new Error('Falha ao enviar fatura');
       
-      alert('Fatura enviada com sucesso para ' + driver.email);
+      toast.success('Fatura enviada com sucesso para ' + driver.email);
       addNotification({
         id: crypto.randomUUID(),
         title: 'Fatura Enviada',
@@ -143,7 +139,7 @@ export default function Finance() {
       });
     } catch (error: any) {
       console.error('Erro ao enviar fatura:', error);
-      alert('Erro ao enviar fatura: ' + error.message);
+      toast.error('Erro ao enviar fatura: ' + error.message);
     } finally {
       setIsSendingInvoice(false);
     }
@@ -164,7 +160,7 @@ export default function Finance() {
       console.log('Uber Sync Data Received:', data);
 
       if (data.status === 'connected' && data.drivers?.length === 0) {
-        alert('Conectado à API da Uber com sucesso! No entanto, não foram encontrados novos motoristas ou veículos para sincronizar neste momento.');
+        toast.info('Conectado à API da Uber com sucesso! No entanto, não foram encontrados novos motoristas ou veículos para sincronizar neste momento.');
         return;
       }
 
@@ -251,21 +247,19 @@ export default function Finance() {
         setPayments([...newPayments, ...payments]);
       }
 
-      alert(data.isMock ? 'Sincronização concluída (Modo de Demonstração Uber).' : 'Sincronização com Uber concluída com sucesso!');
+      toast.success('Sincronização com Uber concluída com sucesso!');
       
       addNotification({
         id: crypto.randomUUID(),
-        title: data.isMock ? 'Sincronização Uber (Modo Demo)' : 'Sincronização Uber Concluída',
-        message: data.isMock 
-          ? 'As credenciais da Uber não foram configuradas. Foram carregados dados de demonstração.'
-          : `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos da Uber.`,
+        title: 'Sincronização Uber Concluída',
+        message: `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos da Uber.`,
         date: new Date().toISOString().split('T')[0],
         read: false
       });
 
     } catch (error) {
       console.error('Erro ao sincronizar dados Uber:', error);
-      alert('Erro ao sincronizar dados com a Uber. Verifique a conexão.');
+      toast.error('Erro ao sincronizar dados com a Uber. Verifique a conexão.');
     } finally {
       setIsSyncingUber(false);
     }
@@ -368,21 +362,19 @@ export default function Finance() {
         setPayments([...newPayments, ...payments]);
       }
 
-      alert(data.isMock ? 'Sincronização concluída (Modo de Demonstração).' : 'Sincronização com Bolt concluída com sucesso!');
+      toast.success('Sincronização com Bolt concluída com sucesso!');
       
       addNotification({
         id: crypto.randomUUID(),
-        title: data.isMock ? 'Sincronização (Modo Demo)' : 'Sincronização Bolt Concluída',
-        message: data.isMock 
-          ? 'As credenciais da Bolt não foram configuradas. Foram carregados dados de demonstração.'
-          : `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos.`,
+        title: 'Sincronização Bolt Concluída',
+        message: `Sincronizados ${data.drivers?.length || 0} motoristas e ${data.earnings?.length || 0} registros de ganhos da Bolt.`,
         date: new Date().toISOString().split('T')[0],
         read: false
       });
 
     } catch (error) {
       console.error('Erro ao sincronizar dados Bolt:', error);
-      alert('Erro ao sincronizar dados com a Bolt. Verifique a conexão.');
+      toast.error('Erro ao sincronizar dados com a Bolt. Verifique a conexão.');
     } finally {
       setIsSyncing(false);
     }
@@ -504,7 +496,7 @@ export default function Finance() {
         });
 
         if (errors.length > 0) {
-          alert(`Aviso: Encontrados ${errors.length} erros durante a importação. Algumas linhas podem ter sido ignoradas.\n\nExemplo: ${errors[0]}`);
+          toast.warning(`Aviso: Encontrados ${errors.length} erros durante a importação. Algumas linhas podem ter sido ignoradas.`);
         }
 
         if (newPayments.length > 0) {
@@ -513,9 +505,9 @@ export default function Finance() {
           let message = `Foram importados ${newPayments.length} registros de pagamentos para o período ${getUberPeriod()}.`;
           if (unknownDrivers.length > 0) {
             message += ` Atenção: ${unknownDrivers.length} motoristas não foram encontrados no sistema e usaram cálculos padrão.`;
-            alert(`Aviso: Motorista não encontrado no sistema.\n\nOs seguintes motoristas não foram reconhecidos: ${unknownDrivers.join(', ')}.\n\nSerá aplicada a comissão padrão de 25%.`);
+            toast.warning(`Aviso: ${unknownDrivers.length} motoristas não foram reconhecidos no sistema. Foi aplicada a comissão padrão de 25%.`);
           } else {
-            alert(`${newPayments.length} registros importados com sucesso!`);
+            toast.success(`${newPayments.length} registros importados com sucesso!`);
           }
 
           addNotification({
@@ -526,7 +518,7 @@ export default function Finance() {
             read: false
           });
         } else {
-          alert('Nenhum dado válido encontrado no arquivo. Verifique se o formato está correto.');
+          toast.error('Nenhum dado válido encontrado no arquivo. Verifique se o formato está correto.');
         }
 
         setIsProcessing(false);
@@ -535,7 +527,7 @@ export default function Finance() {
       },
       error: (error) => {
         console.error('Erro ao processar CSV:', error);
-        alert('Erro ao processar o arquivo CSV.');
+        toast.error('Erro ao processar o arquivo CSV.');
         setIsProcessing(false);
       }
     });
@@ -698,7 +690,7 @@ export default function Finance() {
             onClick={() => {
               if (confirm('ATENÇÃO: Isso apagará TODOS os dados do sistema (Motoristas, Veículos, Despesas, etc). Deseja continuar?')) {
                 clearAllData();
-                alert('Todos os dados foram zerados.');
+                toast.success('Todos os dados foram zerados.');
               }
             }}
             className="bg-red-50 text-red-600 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold border border-red-100 flex items-center justify-center gap-2 hover:bg-red-100 transition-all text-sm sm:text-base"
@@ -1010,7 +1002,7 @@ export default function Finance() {
                 onClick={() => {
                   if (confirm(`Deseja marcar todos os ${filteredPayments.length} pagamentos como pagos?`)) {
                     setPayments(payments.map(p => p.status === 'pending' ? { ...p, status: 'paid' } : p));
-                    alert('Todos os pagamentos foram processados!');
+                    toast.success('Todos os pagamentos foram processados!');
                   }
                 }}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-all"

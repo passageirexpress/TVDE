@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Save, Shield, Mail, CreditCard, Globe, Database, Bell, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 
 export default function MasterSettings() {
@@ -10,7 +11,7 @@ export default function MasterSettings() {
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
-      alert('Configurações globais salvas com sucesso!');
+      toast.success('Configurações globais salvas com sucesso!');
     }, 1000);
   };
 
@@ -175,7 +176,7 @@ export default function MasterSettings() {
                       onClick={async () => {
                         const email = (document.getElementById('test-email-input') as HTMLInputElement).value;
                         if (!email) {
-                          alert('Por favor, insira um email para teste.');
+                          toast.error('Por favor, insira um email para teste.');
                           return;
                         }
                         try {
@@ -186,12 +187,12 @@ export default function MasterSettings() {
                           });
                           const result = await response.json();
                           if (result.success) {
-                            alert('Email de teste enviado com sucesso!');
+                            toast.success('Email de teste enviado com sucesso!');
                           } else {
-                            alert('Erro: ' + result.error);
+                            toast.error('Erro: ' + result.error);
                           }
                         } catch (err: any) {
-                          alert('Erro ao enviar email: ' + err.message);
+                          toast.error('Erro ao enviar email: ' + err.message);
                         }
                       }}
                       className="bg-sidebar text-white px-6 py-2 rounded-xl font-bold hover:bg-black transition-all"

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { X, Printer, FileText, Shield, Car } from 'lucide-react';
+import { toast } from 'sonner';
 import { Driver, Company } from '../types';
 import { cn } from '../lib/utils';
 
@@ -21,7 +22,7 @@ export default function DriverContractModal({ driver, company, onClose }: Driver
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Por favor, permita pop-ups para imprimir o contrato.');
+      toast.error('Por favor, permita pop-ups para imprimir o contrato.');
       return;
     }
 

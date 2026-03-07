@@ -27,6 +27,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
+import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { formatCurrency, cn } from '../lib/utils';
 import { useAuthStore } from '../store/useAuthStore';
@@ -105,10 +106,10 @@ export default function Expenses() {
         });
 
         importedExpenses.forEach(exp => addExpense(exp));
-        alert(`${importedExpenses.length} despesas importadas com sucesso!`);
+        toast.success(`${importedExpenses.length} despesas importadas com sucesso!`);
       },
       error: (error) => {
-        alert('Erro ao importar CSV: ' + error.message);
+        toast.error('Erro ao importar CSV: ' + error.message);
       }
     });
   };
@@ -174,7 +175,7 @@ export default function Expenses() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.amount || !formData.description || !formData.date) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
+      toast.error('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
@@ -182,7 +183,7 @@ export default function Expenses() {
 
     if (editingExpense) {
       updateExpense(editingExpense.id, { ...formData, driver_id: driverId });
-      alert('Despesa atualizada com sucesso!');
+      toast.success('Despesa atualizada com sucesso!');
     } else {
       const expense: Expense = {
         id: crypto.randomUUID(),
@@ -195,7 +196,7 @@ export default function Expenses() {
         driver_id: driverId || ''
       };
       addExpense(expense);
-      alert('Despesa registada com sucesso!');
+      toast.success('Despesa registada com sucesso!');
     }
     setShowModal(false);
   };
@@ -423,7 +424,7 @@ export default function Expenses() {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => alert('Visualizando comprovativo da despesa...')}
+                          onClick={() => toast.info('Visualizando comprovativo da despesa...')}
                           className="p-2 text-gray-400 hover:text-sidebar transition-colors"
                         >
                           <FileText className="w-4 h-4" />
@@ -433,7 +434,7 @@ export default function Expenses() {
                             <button 
                               onClick={() => {
                                 updateExpense(expense.id, { status: 'approved' });
-                                alert('Despesa aprovada!');
+                                toast.success('Despesa aprovada!');
                               }}
                               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                             >
@@ -442,7 +443,7 @@ export default function Expenses() {
                             <button 
                               onClick={() => {
                                 updateExpense(expense.id, { status: 'rejected' });
-                                alert('Despesa rejeitada!');
+                                toast.error('Despesa rejeitada!');
                               }}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >

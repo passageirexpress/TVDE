@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bell, CheckCircle2, Clock, Trash2, CheckSquare } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDataStore } from '../store/useDataStore';
 import { cn } from '../lib/utils';
 
@@ -8,7 +9,7 @@ export default function Notifications() {
 
   const handleMarkAllAsRead = () => {
     markNotificationsAsRead();
-    alert('Todas as notificações foram marcadas como lidas.');
+    toast.success('Todas as notificações foram marcadas como lidas.');
   };
 
   return (

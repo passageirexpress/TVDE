@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Building2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDataStore } from '../store/useDataStore';
 import { Affiliate } from '../types';
 import { formatCurrency } from '../lib/utils';
@@ -51,7 +52,7 @@ export default function AffiliatesPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Link copiado para a área de transferência!');
+    toast.success('Link copiado para a área de transferência!');
   };
 
   return (

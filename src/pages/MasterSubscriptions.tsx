@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Building2, CreditCard, CheckCircle2, XCircle, Clock, MoreHorizontal, Filter } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
 import { Company } from '../types';
@@ -18,12 +19,12 @@ export default function MasterSubscriptions() {
 
   const handleUpdatePlan = (companyId: string, plan: string) => {
     updateCompany(companyId, { plan: plan as any, subscription_status: 'active' });
-    alert('Plano atualizado com sucesso!');
+    toast.success('Plano atualizado com sucesso!');
   };
 
   const handleUpdateStatus = (companyId: string, status: string) => {
     updateCompany(companyId, { subscription_status: status as any });
-    alert('Status da assinatura atualizado!');
+    toast.success('Status da assinatura atualizado!');
   };
 
   return (

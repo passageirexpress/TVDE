@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { toast } from 'sonner';
 import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate } from '../types';
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
@@ -217,23 +218,14 @@ export const useDataStore = create<DataState>()(
   persist(
     (set, get) => ({
       companies: [],
-      drivers: driversData,
-      vehicles: initialVehicles,
-      expenses: initialExpenses,
-      rentals: initialRentals,
-      users: initialUsers,
-      payments: [
-        { id: '1', company_id: '1', driver_id: '1', driver: 'João Silva', period: '16/02 - 23/02', period_start: '2026-02-16', period_end: '2026-02-23', gross_revenue: 600, gross: 600, commission_fee: 150, net_amount: 450, net: 450, status: 'paid', payment_date: '2026-02-23', date: '2026-02-23' },
-        { id: '2', company_id: '1', driver_id: '2', driver: 'Maria Santos', period: '16/02 - 23/02', period_start: '2026-02-16', period_end: '2026-02-23', gross_revenue: 750, gross: 750, commission_fee: 187.5, net_amount: 562.5, net: 562.5, status: 'paid', payment_date: '2026-02-23', date: '2026-02-23' },
-      ],
-      earningImports: [
-        { id: 'ei1', company_id: '1', driver_id: '1', platform: 'uber', amount: 420.50, week_start: '2026-02-23', week_end: '2026-03-02', processed: false },
-        { id: 'ei2', company_id: '1', driver_id: '1', platform: 'bolt', amount: 180.20, week_start: '2026-02-23', week_end: '2026-03-02', processed: false },
-      ],
-      notifications: [
-        { id: '1', company_id: '1', title: 'Bem-vindo ao TVDE Fleet', message: 'O seu sistema de gestão de frota está pronto a usar.', date: '2026-02-26', read: false },
-        { id: '2', company_id: '1', title: 'Pagamento Processado', message: 'O pagamento da semana 16/02 foi concluído com sucesso.', date: '2026-02-23', read: true },
-      ],
+      drivers: [],
+      vehicles: [],
+      expenses: [],
+      rentals: [],
+      users: [],
+      payments: [],
+      earningImports: [],
+      notifications: [],
       maintenances: [],
       claims: [],
       inventoryItems: [],
@@ -390,7 +382,7 @@ export const useDataStore = create<DataState>()(
             // If it's a permission error and we are master, we might need to use the admin API
             // but we can't do that from client. We should warn the user.
             if (error.code === '42501') {
-              alert(`Erro de permissão ao salvar em ${table}. Verifique as políticas de RLS no Supabase.`);
+              toast.error(`Erro de permissão ao salvar em ${table}. Verifique as políticas de RLS no Supabase.`);
             }
             throw error;
           }

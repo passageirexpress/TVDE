@@ -12,6 +12,7 @@ import {
   X,
   Loader2
 } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 import { cn } from '../lib/utils';
@@ -122,7 +123,7 @@ export default function Subscription() {
       const errorMessage = error.message === 'Failed to fetch' 
         ? 'Erro de conexão com o servidor. O serviço de pagamentos pode estar temporariamente indisponível.'
         : error.message || "Erro de conexão com o servidor.";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

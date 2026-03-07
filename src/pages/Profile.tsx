@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Phone, CreditCard, Shield, Bell, Lock, Save, Camera, FileText, Upload, Calendar, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuthStore } from '../store/useAuthStore';
 import { cn } from '../lib/utils';
 
@@ -108,7 +109,7 @@ export default function Profile() {
               </div>
               <div className="pt-6 border-t border-gray-50 flex justify-end">
                 <button 
-                  onClick={() => alert('Alterações salvas com sucesso!')}
+                  onClick={() => toast.success('Alterações salvas com sucesso!')}
                   className="bg-sidebar text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20"
                 >
                   <Save className="w-5 h-5" />
@@ -152,7 +153,7 @@ export default function Profile() {
               </div>
               <div className="pt-6">
                 <button 
-                  onClick={() => alert('Senha alterada com sucesso!')}
+                  onClick={() => toast.success('Senha alterada com sucesso!')}
                   className="bg-sidebar text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20"
                 >
                   <Shield className="w-5 h-5" />
@@ -246,7 +247,7 @@ export default function Profile() {
 
               <div className="pt-6 border-t border-gray-50 flex justify-end">
                 <button 
-                  onClick={() => alert('Documentos enviados para validação!')}
+                  onClick={() => toast.success('Documentos enviados para validação!')}
                   className="bg-sidebar text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20"
                 >
                   <Upload className="w-5 h-5" />

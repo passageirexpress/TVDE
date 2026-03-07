@@ -37,13 +37,13 @@ export default function Register() {
     setLoading(true);
 
     if (!formData.acceptTerms) {
-      alert('Por favor, aceite os Termos de Serviço e a Política de Privacidade.');
+      toast.error('Por favor, aceite os Termos de Serviço e a Política de Privacidade.');
       setLoading(false);
       return;
     }
 
     if (!isValidNIF(formData.company_nif)) {
-      alert('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
+      toast.error('O NIF introduzido é inválido. Por favor, verifique e tente novamente.');
       setLoading(false);
       return;
     }
@@ -267,11 +267,11 @@ export default function Register() {
               companyId={registeredCompany.id}
               planId={formData.plan}
               onSuccess={() => {
-                alert('Pagamento confirmado! Bem-vindo ao TVDE Fleet.');
+                toast.success('Pagamento confirmado! Bem-vindo ao TVDE Fleet.');
                 navigate('/login');
               }}
               onCancel={() => {
-                alert('O seu registo foi concluído, mas o plano está pendente de pagamento. Pode pagar mais tarde na secção de Assinaturas.');
+                toast.warning('O seu registo foi concluído, mas o plano está pendente de pagamento. Pode pagar mais tarde na secção de Assinaturas.');
                 navigate('/login');
               }}
             />

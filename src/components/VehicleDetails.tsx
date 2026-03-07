@@ -19,6 +19,7 @@ import {
   History,
   Plus
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn, formatCurrency } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
 
@@ -55,9 +56,9 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
       setDocuments((prev: any[]) => prev.map(doc => 
         doc.id === docId ? { ...doc, url, status: 'pending' } : doc
       ));
-      alert('Documento enviado com sucesso!');
+      toast.success('Documento enviado com sucesso!');
     } catch (error: any) {
-      alert('Erro ao enviar documento: ' + error.message);
+      toast.error('Erro ao enviar documento: ' + error.message);
     } finally {
       setIsUploading(null);
     }
@@ -86,9 +87,9 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
       setDocuments((prev: any[]) => prev.map(doc => 
         doc.id === docId ? { ...doc, status: newStatus } : doc
       ));
-      alert(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
+      toast.success(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
     } catch (error: any) {
-      alert('Erro: ' + error.message);
+      toast.error('Erro: ' + error.message);
     }
   };
 
@@ -97,7 +98,7 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
       onUpdate(editedVehicle);
     }
     setIsEditing(false);
-    alert('Veículo atualizado com sucesso!');
+    toast.success('Veículo atualizado com sucesso!');
   };
 
   const getStatusBadge = (status: string) => {
@@ -241,7 +242,7 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
                           </div>
                         </div>
                         <button 
-                          onClick={() => alert(`Iniciando download de: ${doc.label}`)}
+                          onClick={() => toast.info(`Iniciando download de: ${doc.label}`)}
                           className="p-2 text-gray-300 hover:text-sidebar transition-colors"
                         >
                           <Download className="w-5 h-5" />
@@ -430,7 +431,7 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
                 </div>
                 <p className="text-sm text-gray-500 mb-6 leading-relaxed">Ações críticas que afetam a disponibilidade da viatura na frota.</p>
                 <button 
-                  onClick={() => alert(`Viatura ${vehicle.plate} marcada para manutenção.`)}
+                  onClick={() => toast.success(`Viatura ${vehicle.plate} marcada para manutenção.`)}
                   className="w-full py-4 bg-red-50 text-red-600 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-red-100 transition-all"
                 >
                   Imobilizar Viatura

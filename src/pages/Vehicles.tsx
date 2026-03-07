@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Car as CarIcon, AlertTriangle, CheckCircle2, MoreVertical, ChevronDown, ChevronUp, History, User, ExternalLink, X, Save, Clock, Eye } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
@@ -63,13 +64,13 @@ export default function Vehicles() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert('Por favor, preencha todos os campos obrigatórios: Marca, Modelo e Matrícula.');
+      toast.error('Por favor, preencha todos os campos obrigatórios: Marca, Modelo e Matrícula.');
       return;
     }
 
     if (editingVehicle) {
       updateVehicle(editingVehicle.id, formData as any);
-      alert('Veículo atualizado com sucesso!');
+      toast.success('Veículo atualizado com sucesso!');
     } else {
       const newVehicle = {
         id: crypto.randomUUID(),
@@ -84,7 +85,7 @@ export default function Vehicles() {
         history: []
       } as any;
       addVehicle(newVehicle);
-      alert('Veículo adicionado com sucesso!');
+      toast.success('Veículo adicionado com sucesso!');
     }
     setShowModal(false);
   };
@@ -101,7 +102,7 @@ export default function Vehicles() {
     if (vehicle) {
       const newStatus = vehicle.status === 'active' ? 'maintenance' : 'active';
       updateVehicle(id, { status: newStatus as any });
-      alert(`Veículo ${vehicle.plate} agora está em ${newStatus === 'active' ? 'Operação' : 'Manutenção'}.`);
+      toast.success(`Veículo ${vehicle.plate} agora está em ${newStatus === 'active' ? 'Operação' : 'Manutenção'}.`);
     }
   };
 

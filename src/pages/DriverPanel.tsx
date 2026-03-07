@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   Archive
 } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
 import { 
   BarChart, 
@@ -166,7 +167,7 @@ export default function DriverPanel() {
       description: '',
       date: new Date().toISOString().split('T')[0]
     });
-    alert('Despesa enviada para aprovação!');
+    toast.success('Despesa enviada para aprovação!');
   };
 
   const filteredHistory = myPayments.filter(item => {
@@ -306,7 +307,7 @@ export default function DriverPanel() {
               )}
             </button>
             <button 
-              onClick={() => alert('Relatório detalhado em PDF sendo gerado...')}
+              onClick={() => toast.info('Relatório detalhado em PDF sendo gerado...')}
               className="bg-sidebar text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm"
             >
               <Download className="w-4 h-4 sm:w-5 h-5" />
@@ -476,7 +477,7 @@ export default function DriverPanel() {
                 <p className="text-xs text-gray-400 mt-1">Despesas operacionais associadas ao seu perfil</p>
               </div>
               <button 
-                onClick={() => alert('Exportando histórico de despesas...')}
+                onClick={() => toast.info('Exportando histórico de despesas...')}
                 className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-sidebar transition-colors"
               >
                 <Download className="w-4 h-4" />
@@ -650,7 +651,7 @@ export default function DriverPanel() {
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <p className="text-xs text-gray-500 font-bold">Clique para carregar PDF</p>
                   </div>
-                  <input type="file" className="hidden" accept=".pdf" onChange={() => alert('Recibo carregado com sucesso! Aguarde validação.')} />
+                  <input type="file" className="hidden" accept=".pdf" onChange={() => toast.success('Recibo carregado com sucesso! Aguarde validação.')} />
                 </label>
                 <button className="w-full py-3 bg-sidebar text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20">
                   Enviar para Empresa
@@ -960,7 +961,7 @@ export default function DriverPanel() {
               <button 
                 onClick={() => {
                   setShowVehicleModal(false);
-                  alert('Dados do veículo atualizados com sucesso!');
+                  toast.success('Dados do veículo atualizados com sucesso!');
                 }}
                 className="flex-1 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-xl shadow-sidebar/20"
               >

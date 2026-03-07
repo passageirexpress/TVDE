@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 import { supabase } from '../lib/supabase';
@@ -48,19 +49,6 @@ export default function Login() {
       if (error || !data.session) {
         if (error) console.log("Auth Error:", error.message);
         
-        // Fallback for Master Admin
-        if (cleanEmail === 'master@tvdefleet.com' && cleanPassword === '1234') {
-          console.log("Master Admin Fallback Triggered");
-          setUser({
-            id: 'master-id',
-            email: 'master@tvdefleet.com',
-            role: 'master',
-            full_name: 'Master Admin'
-          });
-          navigate('/');
-          return;
-        }
-
         if (error?.message === 'Failed to fetch') {
           throw new Error('Falha de conexão com o servidor. Verifique se o URL do Supabase está correto (deve começar com https://) e se a sua ligação à internet está ativa.');
         }
@@ -93,7 +81,7 @@ export default function Login() {
         navigate('/');
       }
     } catch (error: any) {
-      alert(error.message || 'Erro ao entrar. Verifique suas credenciais.');
+      toast.error(error.message || 'Erro ao entrar. Verifique suas credenciais.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -103,14 +91,14 @@ export default function Login() {
     e.preventDefault();
     const emailToReset = email.trim();
     if (!emailToReset) {
-      alert('Por favor, insira seu e-mail para recuperar a senha.');
+      toast.error('Por favor, insira seu e-mail para recuperar a senha.');
       return;
     }
-    alert(`Um link de recuperação de senha foi enviado para: ${emailToReset}`);
+    toast.success(`Um link de recuperação de senha foi enviado para: ${emailToReset}`);
   };
 
   const handleCreateAccount = () => {
-    alert('Para criar uma conta, por favor entre em contato com o administrador do sistema ou o gestor da sua frota.');
+    toast.info('Para criar uma conta, por favor entre em contato com o administrador do sistema ou o gestor da sua frota.');
   };
 
   const handleResetSystem = () => {

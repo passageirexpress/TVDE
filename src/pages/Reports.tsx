@@ -12,6 +12,7 @@ import {
   FileText,
   Filter
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
 import { 
@@ -163,7 +164,7 @@ export default function Reports() {
             Filtros
           </button>
           <button 
-            onClick={() => alert('Gerando PDF consolidado...')}
+            onClick={() => toast.info('Gerando PDF consolidado...')}
             className="bg-sidebar text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm sm:text-base"
           >
             <Download className="w-4 h-4 sm:w-5 h-5" />
@@ -231,7 +232,7 @@ export default function Reports() {
             key={tab.id}
             onClick={() => {
               setActiveReport(tab.id);
-              alert(`Carregando relatório de ${tab.label}...`);
+              toast.info(`Carregando relatório de ${tab.label}...`);
             }}
             className={cn(
               "px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap",
