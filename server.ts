@@ -596,22 +596,24 @@ async function startServer() {
       // console.log(`[REGISTER] Usuário Auth criado: ${authData.user.id}`);
 
       // 3. Create the user profile in custom table
+      const profilePayload: any = {
+        id: authData.user.id,
+        email: admin_email,
+        full_name: admin_name,
+        company_id: companyId,
+        role: 'admin'
+      };
+
       const { error: profileError } = await supabaseAdmin
         .from('users')
-        .insert([{
-          id: authData.user.id,
-          email: admin_email,
-          full_name: admin_name,
-          company_id: companyId,
-          role: 'admin'
-        }]);
+        .insert([profilePayload]);
 
       if (profileError) {
-        console.error("[REGISTER ERROR] Falha ao criar perfil do usuário:", profileError.message);
+        console.error("[REGISTER ERROR] Falha ao criar perfil do usuário:", profileError.message, profileError.details);
         // Cleanup Auth user and company if profile creation fails
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
         await supabaseAdmin.from('companies').delete().eq('id', companyId);
-        throw profileError;
+        throw new Error(`Erro ao criar perfil de utilizador: ${profileError.message}`);
       }
 
       // console.log(`[REGISTER] Registro completo para ${admin_email}`);
@@ -746,22 +748,26 @@ async function startServer() {
 
       // 2. Create profile in custom table
       const table = role === 'driver' ? 'drivers' : 'users';
-      const profileData = {
+      const profileData: any = {
         id: authData.user.id,
         email,
         full_name,
         company_id: company_id || null,
-        role: role !== 'driver' ? role : undefined,
       };
+
+      if (role !== 'driver') {
+        profileData.role = role;
+      }
 
       const { error: profileError } = await supabaseAdmin
         .from(table)
         .insert([profileData]);
 
       if (profileError) {
+        console.error(`[CREATE USER ERROR] Falha ao criar perfil na tabela ${table}:`, profileError.message, profileError.details);
         // Cleanup Auth user if profile creation fails
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-        throw profileError;
+        throw new Error(`Erro de base de dados ao criar perfil: ${profileError.message}`);
       }
 
       // 3. Send Welcome Email
@@ -776,7 +782,7 @@ async function startServer() {
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                 <h1 style="color: #1a1a1a;">Olá, ${full_name}!</h1>
-                <p>Foi criada uma conta para si na plataforma TVDE Fleet com a função de <strong>${role === 'driver' ? 'Motorista' : role}</strong>.</p>
+                <p>Foi criada uma conta para si na plataforma TVDE Fleet com a função de <strong>${role === 'driver' ? 'Motorista' : role.charAt(0).toUpperCase() + role.slice(1)}</strong>.</p>
                 <p>Pode aceder à sua conta utilizando as seguintes credenciais:</p>
                 <div style="background-color: #f5f5f5; padding: 15px; border-radius: 6px; margin: 20px 0;">
                   <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>

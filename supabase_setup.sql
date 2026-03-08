@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS companies (
 
 -- 3. Tabela de Usuários (Users - Perfis de Admin/Gestor)
 CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY,
   company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   full_name TEXT,
@@ -30,9 +30,17 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tentar adicionar a foreign key separadamente para evitar erros se a tabela auth.users não estiver visível no momento da criação
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_id_fkey') THEN
+        ALTER TABLE users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
 -- 4. Tabela de Motoristas (Drivers)
 CREATE TABLE IF NOT EXISTS drivers (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY,
   company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -53,6 +61,14 @@ CREATE TABLE IF NOT EXISTS drivers (
   entry_date DATE DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Tentar adicionar a foreign key separadamente para drivers
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'drivers_id_fkey') THEN
+        ALTER TABLE drivers ADD CONSTRAINT drivers_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- 5. Tabela de Veículos (Vehicles)
 CREATE TABLE IF NOT EXISTS vehicles (

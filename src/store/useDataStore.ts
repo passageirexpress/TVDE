@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
-import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog } from '../types';
+import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog, AuditLog } from '../types';
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
