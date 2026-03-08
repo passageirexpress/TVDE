@@ -28,6 +28,7 @@ interface DataState {
   fuelLogs: FuelLog[];
   affiliates: Affiliate[];
   settings: CompanySettings;
+  auditLogs: AuditLog[];
   isLoading: boolean;
   
   // Companies
@@ -113,6 +114,9 @@ interface DataState {
   
   // Settings
   updateSettings: (settings: Partial<CompanySettings>) => void;
+  
+  // Audit Logs
+  addAuditLog: (log: Omit<AuditLog, 'id' | 'timestamp' | 'company_id'>) => Promise<void>;
   
   // Global Actions
   rehydrateData: () => void;
@@ -257,6 +261,7 @@ export const useDataStore = create<DataState>()(
       deliveries: [],
       fuelLogs: [],
       affiliates: [],
+      auditLogs: [],
       settings: initialSettings,
       isLoading: false,
 
@@ -351,7 +356,7 @@ export const useDataStore = create<DataState>()(
           let usersQuery = supabase.from('users').select('*');
           let paymentsQuery = supabase.from('payments').select('*');
           let earningImportsQuery = supabase.from('earning_imports').select('*');
-          let settingsQuery = supabase.from('settings').select('id, company_id, name, nif, address, email, iban, bolt_client_id, uber_client_id, created_at, updated_at');
+          let settingsQuery = supabase.from('settings').select('id, company_id, name, nif, address, email, iban, bolt_client_id, uber_client_id, logo_url, primary_color, created_at, updated_at');
           let companiesQuery = supabase.from('companies').select('*');
           let maintenancesQuery = supabase.from('maintenances').select('*');
           let claimsQuery = supabase.from('claims').select('*');
@@ -363,6 +368,7 @@ export const useDataStore = create<DataState>()(
           let deliveriesQuery = supabase.from('deliveries').select('*');
           let fuelLogsQuery = supabase.from('fuel_logs').select('*');
           let affiliatesQuery = supabase.from('affiliates').select('*');
+          let auditLogsQuery = supabase.from('audit_logs').select('*');
 
           if (!isMaster && companyId) {
             driversQuery = driversQuery.eq('company_id', companyId);
@@ -399,6 +405,10 @@ export const useDataStore = create<DataState>()(
             contractsQuery, clientsQuery, transfersQuery, deliveriesQuery, fuelLogsQuery, affiliatesQuery
           ]);
 
+          const [auditLogs] = await Promise.all([
+            auditLogsQuery
+          ]);
+
           if (drivers.data) set({ drivers: drivers.data });
           if (vehicles.data) set({ vehicles: vehicles.data });
           if (expenses.data) set({ expenses: expenses.data });
@@ -418,6 +428,7 @@ export const useDataStore = create<DataState>()(
           if (deliveries.data) set({ deliveries: deliveries.data });
           if (fuelLogs.data) set({ fuelLogs: fuelLogs.data });
           if (affiliates.data) set({ affiliates: affiliates.data });
+          if (auditLogs.data) set({ auditLogs: auditLogs.data });
         } catch (error) {
           console.error('Error fetching from Supabase:', error);
         } finally {
@@ -895,6 +906,23 @@ export const useDataStore = create<DataState>()(
           get().saveToSupabase('settings', settings);
           return { settings };
         });
+      },
+
+      addAuditLog: async (logData) => {
+        const user = useAuthStore.getState().user;
+        if (!user?.company_id) return;
+
+        const newLog: AuditLog = {
+          id: crypto.randomUUID(),
+          company_id: user.company_id,
+          user_id: user.id,
+          user_name: user.full_name || 'Sistema',
+          timestamp: new Date().toISOString(),
+          ...logData
+        };
+
+        set((state) => ({ auditLogs: [newLog, ...state.auditLogs] }));
+        await get().saveToSupabase('audit_logs', newLog);
       },
 
       // Global Actions

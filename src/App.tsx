@@ -36,6 +36,8 @@ import Claims from './pages/Claims';
 import Services from './pages/Services';
 import Clients from './pages/Clients';
 import FuelLogs from './pages/FuelLogs';
+import AuditLogs from './pages/AuditLogs';
+import Support from './pages/Support';
 import Chat from './pages/Chat';
 import Affiliates from './pages/Affiliates';
 import Terms from './pages/Terms';
@@ -179,6 +181,12 @@ export default function App() {
               <FuelLogs />
             </ProtectedRoute>
           } />
+          <Route path="audit-logs" element={
+            <ProtectedRoute allowedRoles={['admin', 'master']}>
+              <AuditLogs />
+            </ProtectedRoute>
+          } />
+          <Route path="support" element={<Support />} />
           <Route path="chat" element={<Chat />} />
           <Route path="affiliates" element={
             <ProtectedRoute allowedRoles={['master']}>

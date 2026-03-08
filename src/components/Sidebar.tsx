@@ -23,11 +23,14 @@ import {
   Users as UsersIcon,
   Briefcase,
   Share2,
-  Fuel
+  Fuel,
+  History,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 import { useAuthStore } from '../store/useAuthStore';
+import { useDataStore } from '../store/useDataStore';
 
 const adminItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -45,6 +48,8 @@ const adminItems = [
   { icon: Euro, label: 'Financeiro', path: '/dashboard/finance' },
   { icon: FileText, label: 'Despesas', path: '/dashboard/expenses' },
   { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
+  { icon: History, label: 'Auditoria', path: '/dashboard/audit-logs' },
+  { icon: HelpCircle, label: 'Suporte & FAQ', path: '/dashboard/support' },
   { icon: Car, label: 'Aluguel', path: '/dashboard/rentals' },
   { icon: BarChart3, label: 'Relatórios', path: '/dashboard/reports' },
   { icon: Shield, label: 'Usuários', path: '/dashboard/users' },
@@ -56,6 +61,8 @@ const adminItems = [
 const masterItems = [
   { icon: LayoutDashboard, label: 'Dashboard Master', path: '/dashboard' },
   { icon: Shield, label: 'Empresas', path: '/dashboard/companies' },
+  { icon: History, label: 'Auditoria Global', path: '/dashboard/audit-logs' },
+  { icon: HelpCircle, label: 'Suporte Master', path: '/dashboard/support' },
   { icon: Share2, label: 'Afiliados', path: '/dashboard/affiliates' },
   { icon: Users, label: 'Todos Usuários', path: '/dashboard/users' },
   { icon: CreditCard, label: 'Assinaturas Master', path: '/dashboard/subscription' },
@@ -65,6 +72,7 @@ const masterItems = [
 const driverItems = [
   { icon: LayoutDashboard, label: 'Meus Ganhos', path: '/dashboard/driver-panel' },
   { icon: MessageSquare, label: 'Chat Suporte', path: '/dashboard/chat' },
+  { icon: HelpCircle, label: 'Ajuda & FAQ', path: '/dashboard/support' },
   { icon: ShieldAlert, label: 'Reportar Sinistro', path: '/dashboard/claims' },
   { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
   { icon: FileText, label: 'Minhas Despesas', path: '/dashboard/expenses' },
@@ -81,6 +89,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
+  const { settings } = useDataStore();
 
   const navItems = user?.role === 'master' ? masterItems : user?.role === 'driver' ? driverItems : adminItems;
 
@@ -100,10 +109,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}>
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <Car className="w-5 h-5 text-sidebar" />
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">TVDE Fleet</span>
+            {settings?.logo_url ? (
+              <img src={settings.logo_url} alt="Logo" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <Car className="w-5 h-5 text-sidebar" />
+              </div>
+            )}
+            <span className="text-white font-bold text-lg tracking-tight">{settings?.name || 'TVDE Fleet'}</span>
           </div>
           <button 
             onClick={onClose}

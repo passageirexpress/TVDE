@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap } from 'lucide-react';
+import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap, Palette, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompanySettings } from '../types';
 import { useDataStore } from '../store/useDataStore';
@@ -121,6 +121,52 @@ export default function Settings() {
                 onChange={e => setSettings({...settings, iban: e.target.value})}
                 required
               />
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-gray-100">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <Palette className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Personalização da Marca (White-label)</h3>
+                <p className="text-sm text-gray-400">Personalize a aparência do dashboard para a sua empresa.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  <ImageIcon className="w-3 h-3" /> URL do Logótipo
+                </label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.logo_url || ''}
+                  onChange={e => setSettings({...settings, logo_url: e.target.value})}
+                  placeholder="https://exemplo.com/logo.png"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  <Palette className="w-3 h-3" /> Cor Primária
+                </label>
+                <div className="flex gap-3">
+                  <input 
+                    type="color" 
+                    className="h-12 w-20 p-1 bg-gray-50 border border-gray-200 rounded-xl outline-none cursor-pointer"
+                    value={settings.primary_color || '#000000'}
+                    onChange={e => setSettings({...settings, primary_color: e.target.value})}
+                  />
+                  <input 
+                    type="text" 
+                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                    value={settings.primary_color || '#000000'}
+                    onChange={e => setSettings({...settings, primary_color: e.target.value})}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

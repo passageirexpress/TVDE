@@ -928,7 +928,7 @@ async function startServer() {
   // API to update company settings (Uber/Bolt credentials)
   app.post("/api/settings/update", async (req, res) => {
     const authHeader = req.headers.authorization;
-    const { bolt_client_id, bolt_client_secret, uber_client_id, uber_client_secret } = req.body;
+    const { bolt_client_id, bolt_client_secret, uber_client_id, uber_client_secret, logo_url, primary_color } = req.body;
 
     if (!supabaseAdmin) {
       return res.status(500).json({ error: "Supabase não configurado." });
@@ -962,6 +962,8 @@ async function startServer() {
         company_id: profile.company_id,
         bolt_client_id,
         uber_client_id,
+        logo_url,
+        primary_color,
         updated_at: new Date().toISOString()
       };
 

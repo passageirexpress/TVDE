@@ -4,7 +4,7 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-sidebar: #151619;
+  --color-sidebar: var(--primary-color, #151619);
   --color-sidebar-foreground: #8E9299;
   --color-sidebar-accent: #FFFFFF;
   

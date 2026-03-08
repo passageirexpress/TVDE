@@ -173,6 +173,20 @@ export interface CompanySettings {
   bolt_client_secret?: string;
   uber_client_id?: string;
   uber_client_secret?: string;
+  logo_url?: string;
+  primary_color?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  company_id: string;
+  user_id: string;
+  user_name: string;
+  action: string;
+  entity: string;
+  entity_id: string;
+  details: string;
+  timestamp: string;
 }
 
 export interface AppNotification {

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Bell, User, Search, Menu, X, CheckCircle2, Clock } from 'lucide-react';
+import { Bell, User, Search, Menu, X, CheckCircle2, Clock, Globe } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,12 +9,19 @@ import { cn } from '../lib/utils';
 
 export default function Layout() {
   const user = useAuthStore(state => state.user);
-  const { notifications, markNotificationsAsRead } = useDataStore();
+  const { notifications, markNotificationsAsRead, settings } = useDataStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (settings?.primary_color) {
+      document.documentElement.style.setProperty('--primary-color', settings.primary_color);
+    }
+  }, [settings?.primary_color]);
+
   const unreadCount = notifications.filter(n => !n.read).length;
+  const [currentLang, setCurrentLang] = useState('PT');
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F5]">
@@ -41,6 +48,19 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-3 lg:gap-6">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-all group">
+              <Globe className="w-4 h-4 text-gray-400 group-hover:text-sidebar" />
+              <select 
+                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
+                value={currentLang}
+                onChange={(e) => setCurrentLang(e.target.value)}
+              >
+                <option value="PT">PT</option>
+                <option value="EN">EN</option>
+                <option value="FR">FR</option>
+              </select>
+            </div>
+            
             <div className="relative">
               <button 
                 onClick={() => {
