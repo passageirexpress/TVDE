@@ -750,9 +750,8 @@ async function startServer() {
         id: authData.user.id,
         email,
         full_name,
-        company_id,
+        company_id: company_id || null,
         role: role !== 'driver' ? role : undefined,
-        // password removed for security - Supabase Auth handles this
       };
 
       const { error: profileError } = await supabaseAdmin

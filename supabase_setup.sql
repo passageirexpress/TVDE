@@ -247,7 +247,7 @@ END $$;
 -- 18. Criar Políticas de RLS (Acesso por company_id)
 -- Estas políticas permitem que usuários vejam apenas dados da sua própria empresa.
 
--- Limpar políticas antigas para evitar erros de duplicado
+-- Limpar políticas antigas para evitar erros de duplicado ou recursão
 DO $$ 
 DECLARE 
     pol RECORD;
@@ -257,37 +257,51 @@ BEGIN
     END LOOP;
 END $$;
 
--- Política para Users (Cada um vê o seu perfil e admins veem todos da empresa)
-CREATE POLICY "Users can see their own profile" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Admins can see company users" ON users FOR SELECT USING (
-  EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.company_id = users.company_id AND u.role IN ('admin', 'master'))
+-- Políticas para a tabela USERS (Evitando recursão usando metadata do JWT)
+CREATE POLICY "Users can see own profile" ON users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Master can see all users" ON users FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'master');
+CREATE POLICY "Admins can manage company users" ON users FOR ALL USING (
+  (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin' 
+  AND 
+  (auth.jwt() -> 'user_metadata' ->> 'company_id')::uuid = company_id
 );
 
--- Políticas Genéricas para tabelas vinculadas a company_id
+-- Políticas para a tabela DRIVERS
+CREATE POLICY "Drivers can see own profile" ON drivers FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Admins/Master can manage drivers" ON drivers FOR ALL USING (
+  (auth.jwt() -> 'user_metadata' ->> 'role') IN ('admin', 'master')
+  AND 
+  (
+    (auth.jwt() -> 'user_metadata' ->> 'role') = 'master' 
+    OR 
+    (auth.jwt() -> 'user_metadata' ->> 'company_id')::uuid = company_id
+  )
+);
+
+-- Políticas Genéricas para outras tabelas (vehicles, payments, etc.)
 DO $$ 
 DECLARE 
     t TEXT;
-    tables TEXT[] := ARRAY['drivers', 'vehicles', 'settings', 'payments', 'expenses', 'rentals', 'audit_logs', 'transfers', 'deliveries', 'maintenances', 'claims', 'fuel_logs', 'notifications'];
+    tables TEXT[] := ARRAY['vehicles', 'settings', 'payments', 'expenses', 'rentals', 'audit_logs', 'transfers', 'deliveries', 'maintenances', 'claims', 'fuel_logs', 'notifications'];
 BEGIN
     FOR t IN SELECT unnest(tables) LOOP
-        -- Garantir que a coluna company_id existe antes de criar a política
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'company_id') THEN
             EXECUTE format('CREATE POLICY "Company access for %I" ON %I FOR ALL USING (
-                EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.company_id = %I.company_id)
-                OR 
-                EXISTS (SELECT 1 FROM drivers d WHERE d.id = auth.uid() AND d.company_id = %I.company_id)
+                (auth.jwt() -> ''user_metadata'' ->> ''role'') = ''master''
                 OR
-                EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = ''master'')
-            )', t, t, t, t);
+                (
+                  (auth.jwt() -> ''user_metadata'' ->> ''company_id'')::uuid = company_id
+                  AND
+                  (auth.jwt() -> ''user_metadata'' ->> ''role'') IN (''admin'', ''manager'', ''finance'', ''driver'')
+                )
+            )', t, t);
         END IF;
     END LOOP;
 END $$;
 
 -- Política especial para a tabela companies
-CREATE POLICY "Users can see their own company" ON companies FOR SELECT USING (
-  id IN (SELECT company_id FROM users WHERE id = auth.uid())
-  OR 
-  id IN (SELECT company_id FROM drivers WHERE id = auth.uid())
+CREATE POLICY "Company visibility" ON companies FOR SELECT USING (
+  (auth.jwt() -> 'user_metadata' ->> 'role') = 'master'
   OR
-  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'master')
+  id = (auth.jwt() -> 'user_metadata' ->> 'company_id')::uuid
 );
