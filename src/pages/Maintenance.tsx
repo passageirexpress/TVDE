@@ -20,6 +20,7 @@ import { useDataStore } from '../store/useDataStore';
 import { Maintenance } from '../types';
 import { formatCurrency } from '../lib/utils';
 import { cn } from '../lib/utils';
+import { toast } from 'sonner';
 
 export default function MaintenancePage() {
   const { vehicles, maintenances, addMaintenance, updateMaintenance } = useDataStore();
@@ -215,6 +216,129 @@ export default function MaintenancePage() {
           </table>
         </div>
       </div>
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Nova Revisão</h2>
+                <p className="text-sm text-gray-500 font-medium">Registe uma nova manutenção para um veículo da frota</p>
+              </div>
+              <button 
+                onClick={() => setShowAddModal(false)} 
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
+            </div>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const maintenance: Maintenance = {
+                  id: crypto.randomUUID(),
+                  vehicle_id: formData.get('vehicle_id') as string,
+                  type: formData.get('type') as Maintenance['type'],
+                  date: formData.get('date') as string,
+                  mileage: parseInt(formData.get('mileage') as string),
+                  cost: parseFloat(formData.get('cost') as string),
+                  description: formData.get('description') as string,
+                  status: 'completed',
+                  created_at: new Date().toISOString()
+                };
+                addMaintenance(maintenance);
+                setShowAddModal(false);
+                toast.success('Manutenção registada com sucesso!');
+              }}
+              className="p-8 space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Veículo</label>
+                  <select 
+                    name="vehicle_id"
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                  >
+                    <option value="">Selecione o Veículo</option>
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.plate} - {v.brand} {v.model}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tipo de Manutenção</label>
+                  <select 
+                    name="type"
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                  >
+                    <option value="oil_change">Mudança de Óleo</option>
+                    <option value="tires">Pneus</option>
+                    <option value="brakes">Travões</option>
+                    <option value="general">Geral</option>
+                    <option value="other">Outro</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Data</label>
+                  <input 
+                    name="date"
+                    required type="date"
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quilometragem</label>
+                  <input 
+                    name="mileage"
+                    required type="number"
+                    placeholder="Ex: 125000"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Custo (€)</label>
+                  <input 
+                    name="cost"
+                    required type="number" step="0.01"
+                    placeholder="0.00"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Descrição</label>
+                <textarea 
+                  name="description"
+                  required
+                  rows={3}
+                  placeholder="Detalhes da manutenção realizada..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium resize-none"
+                />
+              </div>
+
+              <div className="pt-6 flex gap-4">
+                <button 
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20 flex items-center justify-center"
+                >
+                  Registar Manutenção
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

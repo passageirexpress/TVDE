@@ -1,377 +1,302 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  BarChart3, 
-  PieChart, 
-  TrendingUp, 
-  Users, 
-  Car, 
-  Euro, 
-  Download, 
-  Calendar,
-  ChevronRight,
-  FileText,
-  Filter
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
-import { useDataStore } from '../store/useDataStore';
-import { 
   BarChart, 
   Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
+  Legend, 
   ResponsiveContainer,
-  Cell,
-  PieChart as RePieChart,
+  PieChart,
   Pie,
-  Legend
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
+import { 
+  FileText, 
+  Download, 
+  Filter, 
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Car,
+  Users,
+  AlertCircle
+} from 'lucide-react';
+import { useDataStore } from '../store/useDataStore';
+import { formatCurrency, cn } from '../lib/utils';
+import Papa from 'papaparse';
 
-const revenueData = [
-  { name: 'Seg', total: 1200, uber: 800, bolt: 400 },
-  { name: 'Ter', total: 1400, uber: 900, bolt: 500 },
-  { name: 'Qua', total: 1100, uber: 700, bolt: 400 },
-  { name: 'Qui', total: 1600, uber: 1100, bolt: 500 },
-  { name: 'Sex', total: 2100, uber: 1400, bolt: 700 },
-  { name: 'Sáb', total: 2400, uber: 1600, bolt: 800 },
-  { name: 'Dom', total: 1800, uber: 1200, bolt: 600 },
-];
-
-const commissionDistribution = [
-  { name: 'Uber', value: 7700 * 0.25 },
-  { name: 'Bolt', value: 3900 * 0.25 },
-];
-
-const COLORS = ['#6366f1', '#10b981'];
-
-const driverPerformance = [
-  { name: 'João Silva', revenue: 850, rating: 4.9, acceptance: 94 },
-  { name: 'Maria Santos', revenue: 920, rating: 4.8, acceptance: 88 },
-  { name: 'Ana Oliveira', revenue: 780, rating: 4.7, acceptance: 91 },
-  { name: 'Pedro Costa', revenue: 650, rating: 4.6, acceptance: 85 },
-];
+const COLORS = ['#1a1a1a', '#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
 export default function Reports() {
-  const { payments, drivers, vehicles } = useDataStore();
-  const [activeReport, setActiveReport] = useState('revenue');
-  const [selectedDriverId, setSelectedDriverId] = useState('all');
-  const [selectedVehicleType, setSelectedVehicleType] = useState('all');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [showFilters, setShowFilters] = useState(false);
+  const { payments, expenses, vehicles, drivers, earningImports } = useDataStore();
+  const [period, setPeriod] = useState('month');
 
-  const filteredPayments = useMemo(() => {
-    return payments.filter(p => {
-      const driverMatch = selectedDriverId === 'all' || p.driver_id === selectedDriverId || p.driver === drivers.find(d => d.id === selectedDriverId)?.full_name;
-      
-      let vehicleMatch = true;
-      if (selectedVehicleType !== 'all') {
-        const driver = drivers.find(d => d.id === p.driver_id || d.full_name === p.driver);
-        const vehicle = vehicles.find(v => v.current_driver_id === driver?.id);
-        vehicleMatch = vehicle?.category === selectedVehicleType;
-      }
+  const stats = useMemo(() => {
+    const totalRevenue = payments.reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
+    const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
+    const totalNet = totalRevenue - totalExpenses;
+    const margin = totalRevenue > 0 ? (totalNet / totalRevenue) * 100 : 0;
 
-      let dateMatch = true;
-      const pDate = p.payment_date || p.date;
-      if (dateRange.start && pDate) {
-        dateMatch = dateMatch && new Date(pDate) >= new Date(dateRange.start);
-      }
-      if (dateRange.end && pDate) {
-        dateMatch = dateMatch && new Date(pDate) <= new Date(dateRange.end);
-      }
+    return {
+      totalRevenue,
+      totalExpenses,
+      totalNet,
+      margin
+    };
+  }, [payments, expenses]);
 
-      return driverMatch && vehicleMatch && dateMatch;
+  const revenueByPlatform = useMemo(() => {
+    const data = [
+      { name: 'Uber', value: earningImports.filter(e => e.platform === 'uber').reduce((acc, e) => acc + e.amount, 0) },
+      { name: 'Bolt', value: earningImports.filter(e => e.platform === 'bolt').reduce((acc, e) => acc + e.amount, 0) },
+      { name: 'Transfers', value: 0 }, // Placeholder for future service revenue
+      { name: 'Entregas', value: 0 }
+    ];
+    return data.filter(d => d.value > 0);
+  }, [earningImports]);
+
+  const monthlyData = useMemo(() => {
+    // Group by month
+    const months: any = {};
+    payments.forEach(p => {
+      const date = new Date(p.date || p.payment_date || p.period_start);
+      const month = date.toLocaleString('pt-PT', { month: 'short' });
+      if (!months[month]) months[month] = { name: month, receita: 0, despesa: 0 };
+      months[month].receita += (p.gross_revenue || p.gross || 0);
     });
-  }, [payments, selectedDriverId, selectedVehicleType, dateRange, drivers, vehicles]);
 
-  const revenueByDay = useMemo(() => {
-    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const data = days.map(day => ({ name: day, uber: 0, bolt: 0, total: 0 }));
-    
-    filteredPayments.forEach(p => {
-      const pDate = p.payment_date || p.date;
-      if (p.status === 'paid' && pDate) {
-        const dateObj = new Date(pDate);
-        const dayIndex = dateObj.getDay();
-        
-        const gross = p.gross_revenue || p.gross || 0;
-        // If platform is specified, use it, otherwise split for visualization
-        if (p.platform === 'uber') {
-          data[dayIndex].uber += gross;
-        } else if (p.platform === 'bolt') {
-          data[dayIndex].bolt += gross;
-        } else {
-          data[dayIndex].uber += gross * 0.65;
-          data[dayIndex].bolt += gross * 0.35;
-        }
-        data[dayIndex].total += gross;
-      }
+    expenses.forEach(e => {
+      const date = new Date(e.date);
+      const month = date.toLocaleString('pt-PT', { month: 'short' });
+      if (!months[month]) months[month] = { name: month, receita: 0, despesa: 0 };
+      months[month].despesa += e.amount;
     });
-    return data;
-  }, [filteredPayments]);
 
-  const totalRevenue = filteredPayments.reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
-  const uberRevenue = filteredPayments.reduce((acc, p) => {
-    if (p.platform === 'uber') return acc + (p.gross_revenue || p.gross || 0);
-    if (!p.platform) return acc + (p.gross_revenue || p.gross || 0) * 0.65;
-    return acc;
-  }, 0);
-  const boltRevenue = filteredPayments.reduce((acc, p) => {
-    if (p.platform === 'bolt') return acc + (p.gross_revenue || p.gross || 0);
-    if (!p.platform) return acc + (p.gross_revenue || p.gross || 0) * 0.35;
-    return acc;
-  }, 0);
+    return Object.values(months);
+  }, [payments, expenses]);
 
-  const performanceData = useMemo(() => {
-    const relevantDrivers = selectedDriverId === 'all' 
-      ? drivers 
-      : drivers.filter(d => d.id === selectedDriverId);
-
-    return relevantDrivers.slice(0, 5).map(d => {
-      const driverPayments = filteredPayments.filter(p => p.driver === d.full_name || p.driver_id === d.id);
-      const revenue = driverPayments.reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
-      return {
-        name: d.full_name,
-        revenue,
-        rating: d.rating_uber,
-        acceptance: d.acceptance_rate
-      };
-    }).sort((a, b) => b.revenue - a.revenue);
-  }, [drivers, filteredPayments, selectedDriverId]);
-
-  const commissionDistribution = [
-    { name: 'Uber', value: uberRevenue * 0.25 },
-    { name: 'Bolt', value: boltRevenue * 0.25 },
-  ];
+  const handleExport = () => {
+    const data = monthlyData.map((d: any) => ({
+      Mês: d.name,
+      Receita: d.receita,
+      Despesa: d.despesa,
+      Lucro: d.receita - d.despesa
+    }));
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `relatorio_financeiro_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 pb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Relatórios & BI</h1>
-          <p className="text-gray-500 mt-1 text-sm sm:text-base">Análise profunda de faturamento, desempenho e métricas da frota.</p>
+          <h1 className="text-3xl font-black tracking-tighter uppercase">Relatórios e Analítica</h1>
+          <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Visão detalhada do desempenho da sua frota</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex bg-white rounded-xl p-1 border border-gray-100 shadow-sm">
+            {['week', 'month', 'year'].map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                  period === p ? "bg-sidebar text-white shadow-md" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                {p === 'week' ? 'Semana' : p === 'month' ? 'Mês' : 'Ano'}
+              </button>
+            ))}
+          </div>
           <button 
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold border flex items-center justify-center gap-2 transition-all text-sm sm:text-base",
-              showFilters ? "bg-sidebar text-white border-sidebar" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            )}
+            onClick={handleExport}
+            className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-400 hover:text-sidebar transition-all"
           >
-            <Filter className="w-4 h-4 sm:w-5 h-5" />
-            Filtros
-          </button>
-          <button 
-            onClick={() => toast.info('Gerando PDF consolidado...')}
-            className="bg-sidebar text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm sm:text-base"
-          >
-            <Download className="w-4 h-4 sm:w-5 h-5" />
-            Exportar PDF
+            <Download className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {showFilters && (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Motorista</label>
-            <select 
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
-              value={selectedDriverId}
-              onChange={(e) => setSelectedDriverId(e.target.value)}
-            >
-              <option value="all">Todos os Motoristas</option>
-              {drivers.map(d => (
-                <option key={d.id} value={d.id}>{d.full_name}</option>
-              ))}
-            </select>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Receita Total</span>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tipo de Viatura</label>
-            <select 
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
-              value={selectedVehicleType}
-              onChange={(e) => setSelectedVehicleType(e.target.value)}
-            >
-              <option value="all">Todas as Categorias</option>
-              <option value="Economy">Economy</option>
-              <option value="Black">Black</option>
-              <option value="XL">XL</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Início</label>
-            <input 
-              type="date"
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
-              value={dateRange.start}
-              onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fim</label>
-            <input 
-              type="date"
-              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
-              value={dateRange.end}
-              onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-            />
-          </div>
+          <p className="text-2xl font-black tracking-tighter">{formatCurrency(stats.totalRevenue)}</p>
+          <p className="text-xs text-gray-400 font-bold mt-1">+12.5% vs mês anterior</p>
         </div>
-      )}
 
-      <div className="flex gap-2 sm:gap-4 p-1 bg-gray-100 rounded-2xl w-full sm:w-fit overflow-x-auto scrollbar-hide">
-        {[
-          { id: 'revenue', label: 'Faturamento', icon: Euro },
-          { id: 'performance', label: 'Desempenho', icon: TrendingUp },
-          { id: 'fleet', label: 'Frota', icon: Car },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setActiveReport(tab.id);
-              toast.info(`Carregando relatório de ${tab.label}...`);
-            }}
-            className={cn(
-              "px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap",
-              activeReport === tab.id ? "bg-white text-sidebar shadow-sm" : "text-gray-400 hover:text-gray-600"
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
+        <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-red-50 text-red-600 rounded-2xl">
+              <TrendingDown className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Despesas</span>
+          </div>
+          <p className="text-2xl font-black tracking-tighter">{formatCurrency(stats.totalExpenses)}</p>
+          <p className="text-xs text-gray-400 font-bold mt-1">-2.4% vs mês anterior</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-sidebar/5 text-sidebar rounded-2xl">
+              <DollarSign className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-black text-sidebar uppercase tracking-widest">Lucro Líquido</span>
+          </div>
+          <p className="text-2xl font-black tracking-tighter">{formatCurrency(stats.totalNet)}</p>
+          <p className="text-xs text-gray-400 font-bold mt-1">+18.2% vs mês anterior</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Margem Operac.</span>
+          </div>
+          <p className="text-2xl font-black tracking-tighter">{stats.margin.toFixed(1)}%</p>
+          <p className="text-xs text-gray-400 font-bold mt-1">Meta: 25%</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <div className="mb-8">
-              <h3 className="text-lg font-bold">Faturamento Semanal por Plataforma</h3>
-              <p className="text-xs text-gray-400 mt-1">Período: {getUberPeriod(new Date(), -1)}</p>
-            </div>
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueByDay}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
-                  <Tooltip 
-                    cursor={{fill: '#f9fafb'}}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="uber" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />
-                  <Bar dataKey="bolt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Main Chart */}
+        <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-black tracking-tighter uppercase mb-8">Evolução Mensal</h3>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f9fafb' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }} />
+                <Bar dataKey="receita" name="Receita" fill="#1a1a1a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
+        </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold mb-8">Distribuição de Comissões por Plataforma</h3>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RePieChart>
-                  <Pie
-                    data={commissionDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {commissionDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Legend verticalAlign="bottom" height={36}/>
-                </RePieChart>
-              </ResponsiveContainer>
-            </div>
+        {/* Platform Distribution */}
+        <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-black tracking-tighter uppercase mb-8">Distribuição por Plataforma</h3>
+          <div className="h-[300px] flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={revenueByPlatform}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {revenueByPlatform.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
+        </div>
+      </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold mb-6">Top Motoristas (Receita)</h3>
-            <div className="space-y-4">
-              {performanceData.map((driver, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-sidebar/20 transition-all group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-bold text-sidebar shadow-sm">
-                      {idx + 1}
-                    </div>
-                    <div>
-                      <p className="font-bold">{driver.name}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Rating: {driver.rating} ★</span>
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">Aceitação: {driver.acceptance}%</span>
+      {/* Fleet Performance Table */}
+      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+          <h3 className="text-lg font-black tracking-tighter uppercase">Desempenho por Viatura</h3>
+          <button className="text-xs font-black text-sidebar uppercase tracking-widest hover:underline">Ver Todos</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50/50">
+                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Viatura</th>
+                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Motorista</th>
+                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Receita</th>
+                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Despesa</th>
+                <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Eficiência</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {vehicles.slice(0, 5).map((v) => {
+                const driver = drivers.find(d => d.id === v.current_driver_id);
+                const revenue = earningImports.filter(e => e.driver_id === driver?.id).reduce((acc, e) => acc + e.amount, 0);
+                const expense = expenses.filter(e => e.driver_id === driver?.id).reduce((acc, e) => acc + e.amount, 0);
+                const efficiency = revenue > 0 ? ((revenue - expense) / revenue) * 100 : 0;
+
+                return (
+                  <tr key={v.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-gray-100 rounded-xl">
+                          <Car className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black tracking-tighter">{v.plate}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase">{v.brand} {v.model}</p>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-black text-emerald-600">{formatCurrency(driver.revenue)}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Esta Semana</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-sidebar p-8 rounded-3xl shadow-xl text-white">
-            <h3 className="text-lg font-bold mb-6">Resumo Executivo</h3>
-            <div className="space-y-6">
-              <div>
-                <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Receita Total</p>
-                <p className="text-3xl font-bold mt-1">{formatCurrency(totalRevenue)}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sidebar-foreground text-[10px] font-bold uppercase tracking-widest">Uber</p>
-                  <p className="text-xl font-bold">{formatCurrency(uberRevenue)}</p>
-                </div>
-                <div>
-                  <p className="text-sidebar-foreground text-[10px] font-bold uppercase tracking-widest">Bolt</p>
-                  <p className="text-xl font-bold">{formatCurrency(boltRevenue)}</p>
-                </div>
-              </div>
-              <div className="pt-6 border-t border-white/10">
-                <p className="text-sidebar-foreground text-xs font-bold uppercase tracking-widest">Comissão Estimada</p>
-                <p className="text-2xl font-bold mt-1 text-emerald-400">{formatCurrency(totalRevenue * 0.25)}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-            <h3 className="text-lg font-bold mb-4">Métricas de Qualidade</h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-2xl">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-gray-500">Rating Médio</span>
-                  <span className="text-sm font-bold text-sidebar">4.82/5.0</span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-sidebar w-[96%]"></div>
-                </div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-2xl">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-gray-500">Taxa de Aceitação</span>
-                  <span className="text-sm font-bold text-emerald-600">91.4%</span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[91%]"></div>
-                </div>
-              </div>
-            </div>
-          </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs font-bold text-gray-600">{driver?.full_name || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6 text-sm font-black">{formatCurrency(revenue)}</td>
+                    <td className="px-8 py-6 text-sm font-black text-red-500">{formatCurrency(expense)}</td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[60px]">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full",
+                              efficiency > 30 ? "bg-emerald-500" : efficiency > 15 ? "bg-amber-500" : "bg-red-500"
+                            )}
+                            style={{ width: `${Math.min(100, Math.max(0, efficiency))}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-black">{efficiency.toFixed(0)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

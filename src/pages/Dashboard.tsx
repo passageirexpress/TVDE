@@ -17,7 +17,9 @@ import {
   Truck,
   Clock as ClockIcon,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Map as MapIcon,
+  Activity
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -58,7 +60,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, link }: any) =>
 );
 
 export default function Dashboard() {
-  const { drivers, vehicles, payments, expenses, transfers, deliveries, fetchFromSupabase, isLoading } = useDataStore();
+  const { drivers, vehicles, payments, expenses, transfers, deliveries, claims, maintenances, fetchFromSupabase, isLoading } = useDataStore();
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -220,6 +222,17 @@ export default function Dashboard() {
     .sort((a, b) => (b.rating_uber + b.rating_bolt) - (a.rating_uber + a.rating_bolt))
     .slice(0, 5);
 
+  const recentActivity = useMemo(() => {
+    const activities = [
+      ...claims.map(c => ({ id: c.id, type: 'claim', title: 'Novo Sinistro', description: c.description, date: c.created_at || c.date, icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-50' })),
+      ...maintenances.map(m => ({ id: m.id, type: 'maintenance', title: 'Manutenção Concluída', description: m.description, date: m.created_at || m.date, icon: Car, color: 'text-amber-500', bg: 'bg-amber-50' })),
+      ...expenses.filter(e => e.status === 'pending').map(e => ({ id: e.id, type: 'expense', title: 'Nova Despesa Pendente', description: e.description, date: e.date, icon: Euro, color: 'text-blue-500', bg: 'bg-blue-50' })),
+      ...payments.filter(p => p.status === 'paid').map(p => ({ id: p.id, type: 'payment', title: 'Pagamento Efetuado', description: `Pago a ${drivers.find(d => d.id === p.driver_id)?.full_name}`, date: p.payment_date || p.date || '', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    return activities.slice(0, 5);
+  }, [claims, maintenances, expenses, payments, drivers]);
+
   if (user?.role === 'master') {
     return (
       <div className="space-y-8">
@@ -370,7 +383,77 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Fleet Map Widget */}
+        <div className="lg:col-span-2 bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Mapa da Frota</h3>
+              <p className="text-sm text-gray-500 font-medium">Localização em tempo real</p>
+            </div>
+            <Link to="/dashboard/fleet-map" className="p-3 bg-sidebar/5 text-sidebar rounded-2xl hover:bg-sidebar/10 transition-all">
+              <MapIcon className="w-5 h-5" />
+            </Link>
+          </div>
+          <div className="flex-1 relative min-h-[300px] bg-gray-50 group">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="relative">
+                  <div className="absolute -inset-4 bg-sidebar/10 rounded-full animate-ping"></div>
+                  <MapIcon className="w-12 h-12 text-sidebar relative z-10" />
+                </div>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Mapa Interativo Ativo</p>
+                <Link 
+                  to="/dashboard/fleet-map"
+                  className="inline-block px-6 py-3 bg-sidebar text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-sidebar/20"
+                >
+                  Abrir Mapa Completo
+                </Link>
+              </div>
+            </div>
+            {/* Simulated mini markers */}
+            <div className="absolute top-1/4 left-1/3 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
+            <div className="absolute top-1/2 left-2/3 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm animate-pulse delay-75"></div>
+            <div className="absolute bottom-1/4 left-1/2 w-3 h-3 bg-amber-500 rounded-full border-2 border-white shadow-sm animate-pulse delay-150"></div>
+          </div>
+        </div>
+
+        {/* Recent Activity Widget */}
+        <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Atividade Recente</h3>
+              <p className="text-sm text-gray-500 font-medium">Últimos eventos da frota</p>
+            </div>
+            <div className="p-3 bg-gray-50 text-gray-400 rounded-2xl">
+              <Activity className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="p-4 space-y-4">
+            {recentActivity.map((activity, idx) => (
+              <div key={idx} className="flex gap-4 p-4 rounded-2xl hover:bg-gray-50 transition-colors group">
+                <div className={cn("p-3 rounded-xl shrink-0", activity.bg, activity.color)}>
+                  <activity.icon className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-black text-gray-900 truncate">{activity.title}</p>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase whitespace-nowrap ml-2">
+                      {new Date(activity.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-1">{activity.description}</p>
+                </div>
+              </div>
+            ))}
+            {recentActivity.length === 0 && (
+              <div className="p-12 text-center">
+                <p className="text-sm text-gray-400 font-medium italic">Nenhuma atividade recente registada.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Live Operations Widget */}
         <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 border-b border-gray-50 flex items-center justify-between">

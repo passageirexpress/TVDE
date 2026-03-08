@@ -120,6 +120,7 @@ interface DataState {
   clearAllData: () => void;
   approveRental: (rentalId: string, driverId: string, driverName: string) => void;
   rejectRental: (rentalId: string, driverName: string) => void;
+  calculateDriverSettlement: (driverId: string, periodStart: string, periodEnd: string) => Payment | null;
   
   // Supabase Sync
   fetchFromSupabase: () => Promise<void>;
@@ -260,10 +261,21 @@ export const useDataStore = create<DataState>()(
       isLoading: false,
 
       // Companies
-      setCompanies: (companies) => set({ companies }),
+      setCompanies: (companies) => set({ 
+        companies: companies.map(c => ({
+          ...c,
+          plan: c.plan || 'free',
+          subscription_status: c.subscription_status || 'active'
+        }))
+      }),
       addCompany: (company) => {
-        set((state) => ({ companies: [company, ...state.companies] }));
-        get().saveToSupabase('companies', company);
+        const companyWithDefaults = {
+          ...company,
+          plan: company.plan || 'free',
+          subscription_status: company.subscription_status || 'active'
+        };
+        set((state) => ({ companies: [companyWithDefaults, ...state.companies] }));
+        get().saveToSupabase('companies', companyWithDefaults);
       },
       updateCompany: (id, updatedCompany) => {
         set((state) => {
@@ -932,6 +944,68 @@ export const useDataStore = create<DataState>()(
           interested_drivers: r.interested_drivers?.filter(d => d !== driverName) 
         } : r)
       })),
+
+      calculateDriverSettlement: (driverId, periodStart, periodEnd) => {
+        const state = get();
+        const driver = state.drivers.find(d => d.id === driverId);
+        if (!driver) return null;
+
+        // 1. Get all earnings for this driver in this period
+        const driverEarnings = state.earningImports.filter(ei => 
+          ei.driver_id === driverId && 
+          ei.week_start === periodStart && 
+          ei.week_end === periodEnd
+        );
+
+        const totalGross = driverEarnings.reduce((acc, curr) => acc + curr.amount, 0);
+        
+        // 2. Calculate company commission
+        const commission = driver.commission_type === 'fixed' 
+          ? driver.commission_value 
+          : totalGross * (driver.commission_value / 100);
+
+        // 3. Get all approved expenses for this driver in this period
+        const start = new Date(periodStart).getTime();
+        const end = new Date(periodEnd).getTime();
+        
+        const driverExpenses = state.expenses.filter(e => {
+          if (e.driver_id !== driverId || e.status !== 'approved') return false;
+          const expenseDate = new Date(e.date).getTime();
+          return expenseDate >= start && expenseDate <= end;
+        });
+
+        const totalExpenses = driverExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+
+        // 4. Check for vehicle rental in this period
+        const activeRental = state.rentals.find(r => r.driver_id === driverId && r.status === 'rented');
+        let rentalCost = 0;
+        if (activeRental) {
+          const days = 7; 
+          rentalCost = activeRental.daily_rate * days;
+        }
+
+        const netAmount = totalGross - commission - totalExpenses - rentalCost;
+
+        const settlement: Payment = {
+          id: crypto.randomUUID(),
+          driver_id: driverId,
+          driver: driver.full_name,
+          platform: 'uber',
+          period_start: periodStart,
+          period_end: periodEnd,
+          period: `${periodStart} - ${periodEnd}`,
+          gross_revenue: totalGross,
+          gross: totalGross,
+          commission_fee: commission,
+          net_amount: netAmount,
+          net: netAmount,
+          status: 'pending',
+          payment_date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split('T')[0]
+        };
+
+        return settlement;
+      },
     }),
     {
       name: 'tvde-fleet-data',

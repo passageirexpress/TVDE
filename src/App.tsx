@@ -195,6 +195,11 @@ export default function App() {
               <Companies />
             </ProtectedRoute>
           } />
+          <Route path="reports" element={
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+              <Reports />
+            </ProtectedRoute>
+          } />
           <Route path="users" element={
             <ProtectedRoute allowedRoles={['admin', 'master']}>
               <Users />

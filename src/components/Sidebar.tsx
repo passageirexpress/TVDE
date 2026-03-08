@@ -46,7 +46,7 @@ const adminItems = [
   { icon: FileText, label: 'Despesas', path: '/dashboard/expenses' },
   { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
   { icon: Car, label: 'Aluguel', path: '/dashboard/rentals' },
-  { icon: FileText, label: 'Relatórios', path: '/dashboard/reports' },
+  { icon: BarChart3, label: 'Relatórios', path: '/dashboard/reports' },
   { icon: Shield, label: 'Usuários', path: '/dashboard/users' },
   { icon: CreditCard, label: 'Assinatura', path: '/dashboard/subscription' },
   { icon: Settings, label: 'Configurações', path: '/dashboard/settings' },

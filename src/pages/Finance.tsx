@@ -54,10 +54,13 @@ interface ImportedData {
 const initialPayments: ImportedData[] = [];
 
 export default function Finance() {
-  const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, addDriver, addVehicle, vehicles } = useDataStore();
+  const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, addDriver, addVehicle, vehicles, calculateDriverSettlement, addPayment } = useDataStore();
   const [activeTab, setActiveTab] = useState('overview');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState<ImportedData | null>(null);
+  const [selectedDriverForSettlement, setSelectedDriverForSettlement] = useState('');
+  const [selectedPeriodForSettlement, setSelectedPeriodForSettlement] = useState('');
+  const [calculatedSettlement, setCalculatedSettlement] = useState<any>(null);
   const [importType, setImportType] = useState<'uber' | 'bolt'>('uber');
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -824,6 +827,164 @@ export default function Finance() {
         </div>
       </div>
 
+      {activeTab === 'settlement' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-3 bg-sidebar/5 text-sidebar rounded-2xl">
+                <Zap className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black tracking-tighter uppercase">Novo Fecho de Contas</h2>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Calcule o valor líquido final para o motorista</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Motorista</label>
+                <select 
+                  className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-sidebar/10 outline-none"
+                  value={selectedDriverForSettlement}
+                  onChange={(e) => setSelectedDriverForSettlement(e.target.value)}
+                >
+                  <option value="">Selecionar Motorista...</option>
+                  {drivers.map(d => (
+                    <option key={d.id} value={d.id}>{d.full_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Período (Semana)</label>
+                <select 
+                  className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-sidebar/10 outline-none"
+                  value={selectedPeriodForSettlement}
+                  onChange={(e) => setSelectedPeriodForSettlement(e.target.value)}
+                >
+                  <option value="">Selecionar Período...</option>
+                  {uniquePeriods.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <button 
+                  onClick={() => {
+                    if (!selectedDriverForSettlement || !selectedPeriodForSettlement) {
+                      toast.error('Selecione o motorista e o período.');
+                      return;
+                    }
+                    const [start, end] = selectedPeriodForSettlement.split(' - ');
+                    const settlement = calculateDriverSettlement(selectedDriverForSettlement, start, end);
+                    if (settlement) {
+                      setCalculatedSettlement(settlement);
+                    } else {
+                      toast.error('Não foram encontrados dados para este motorista no período selecionado.');
+                    }
+                  }}
+                  className="w-full bg-sidebar text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-sidebar/20"
+                >
+                  Calcular Fecho
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {calculatedSettlement && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in zoom-in-95 duration-300">
+              <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
+                <h3 className="text-lg font-black tracking-tighter uppercase mb-6">Resumo do Cálculo</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
+                    <span className="text-sm font-bold text-gray-500">Receita Bruta Total</span>
+                    <span className="text-lg font-black text-gray-900">{formatCurrency(calculatedSettlement.gross_revenue)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-4 bg-red-50 rounded-2xl">
+                    <span className="text-sm font-bold text-red-600">Comissão Empresa</span>
+                    <span className="text-lg font-black text-red-600">-{formatCurrency(calculatedSettlement.commission_fee)}</span>
+                  </div>
+                  
+                  {/* Detailed Deductions */}
+                  <div className="p-6 border border-gray-100 rounded-[24px] space-y-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Deduções Adicionais (Despesas + Aluguer)</p>
+                    {expenses
+                      .filter(e => e.driver_id === calculatedSettlement.driver_id && e.status === 'approved')
+                      .map(e => (
+                        <div key={e.id} className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 capitalize">{e.category}: {e.description}</span>
+                          <span className="font-bold text-red-500">-{formatCurrency(e.amount)}</span>
+                        </div>
+                      ))
+                    }
+                    {vehicles.find(v => v.current_driver_id === calculatedSettlement.driver_id) && (
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500">Aluguer Semanal Viatura</span>
+                        <span className="font-bold text-red-500">
+                          -{formatCurrency((calculatedSettlement.gross_revenue - calculatedSettlement.commission_fee - calculatedSettlement.net_amount) - expenses.filter(e => e.driver_id === calculatedSettlement.driver_id && e.status === 'approved').reduce((acc, e) => acc + e.amount, 0))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center p-6 bg-sidebar text-white rounded-[24px] shadow-xl shadow-sidebar/20">
+                    <span className="text-lg font-black uppercase tracking-tighter">Valor Líquido Final</span>
+                    <span className="text-3xl font-black tracking-tighter">{formatCurrency(calculatedSettlement.net_amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-black tracking-tighter uppercase mb-4">Finalizar Fecho</h3>
+                  <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+                    Ao finalizar, este registro será salvo no histórico e o motorista poderá visualizar o valor no seu painel pessoal.
+                  </p>
+                  
+                  <div className="mb-6 space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assinatura do Responsável</label>
+                    <input 
+                      type="text"
+                      placeholder="Digite seu nome completo..."
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-sidebar/10 outline-none"
+                      id="settlement-signature"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => {
+                      const signature = (document.getElementById('settlement-signature') as HTMLInputElement)?.value;
+                      if (!signature) {
+                        toast.error('Por favor, assine o fecho de contas antes de confirmar.');
+                        return;
+                      }
+                      addPayment({
+                        ...calculatedSettlement,
+                        signature_url: signature // Using text as simple signature simulation
+                      });
+                      toast.success('Fecho de contas finalizado e assinado com sucesso!');
+                      setCalculatedSettlement(null);
+                      setActiveTab('pending');
+                    }}
+                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                  >
+                    Confirmar e Salvar
+                  </button>
+                  <button 
+                    onClick={() => setCalculatedSettlement(null)}
+                    className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 hover:text-gray-600 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'overview' && (
         <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
@@ -945,6 +1106,15 @@ export default function Finance() {
           >
             Histórico
           </button>
+          <button 
+            onClick={() => setActiveTab('settlement')}
+            className={cn(
+              "px-6 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
+              activeTab === 'settlement' ? "border-sidebar text-sidebar" : "border-transparent text-gray-400 hover:text-gray-600"
+            )}
+          >
+            Fecho de Contas
+          </button>
         </div>
 
         <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -952,7 +1122,7 @@ export default function Finance() {
             <div className="flex items-center gap-2 mr-4">
               <History className="w-5 h-5 text-sidebar" />
               <h3 className="font-bold text-gray-900 whitespace-nowrap">
-                {activeTab === 'overview' ? 'Visão Geral' : activeTab === 'pending' ? 'Pagamentos Pendentes' : 'Histórico de Pagamentos'}
+                {activeTab === 'overview' ? 'Visão Geral' : activeTab === 'pending' ? 'Pagamentos Pendentes' : activeTab === 'history' ? 'Histórico de Pagamentos' : 'Fecho de Contas'}
               </h3>
             </div>
             <div className="relative flex-1 max-w-md">

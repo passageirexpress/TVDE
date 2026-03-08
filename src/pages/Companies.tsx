@@ -17,6 +17,7 @@ export default function Companies() {
     address: '',
     iban: '',
     status: 'active' as Company['status'],
+    plan: 'free' as Company['plan'],
     admin_name: '',
     admin_email: '',
     admin_password: ''
@@ -32,6 +33,7 @@ export default function Companies() {
         address: company.address || '',
         iban: company.iban || '',
         status: company.status || 'active',
+        plan: company.plan || 'free',
         admin_name: '',
         admin_email: '',
         admin_password: ''
@@ -45,6 +47,7 @@ export default function Companies() {
         address: '',
         iban: '',
         status: 'active',
+        plan: 'free',
         admin_name: '',
         admin_email: '',
         admin_password: ''
@@ -239,6 +242,19 @@ export default function Companies() {
                   >
                     <option value="active">Ativa</option>
                     <option value="inactive">Inativa</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-400 uppercase">Plano</label>
+                  <select 
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                    value={formData.plan || 'free'}
+                    onChange={(e) => setFormData({...formData, plan: e.target.value as Company['plan']})}
+                  >
+                    <option value="free">Gratuito</option>
+                    <option value="basic">Básico</option>
+                    <option value="pro">Profissional</option>
+                    <option value="enterprise">Enterprise</option>
                   </select>
                 </div>
               </div>

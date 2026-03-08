@@ -106,6 +106,7 @@ export interface Payment {
   status: 'pending' | 'paid' | 'processing';
   payment_date?: string;
   receipt_url?: string;
+  signature_url?: string;
   // Legacy fields for compatibility
   driver?: string;
   gross?: number;
@@ -193,6 +194,8 @@ export interface Maintenance {
   mileage: number;
   next_maintenance_mileage?: number;
   receipt_url?: string;
+  status?: 'pending' | 'completed' | 'canceled';
+  created_at?: string;
 }
 
 export interface Claim {
@@ -269,6 +272,7 @@ export interface Transfer {
   notes?: string;
   completed_at?: string;
   proof_url?: string;
+  signature_url?: string;
   created_at: string;
 }
 
@@ -290,6 +294,7 @@ export interface Delivery {
   notes?: string;
   completed_at?: string;
   proof_url?: string;
+  signature_url?: string;
   created_at: string;
 }
 
