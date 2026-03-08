@@ -64,6 +64,34 @@ export default function Dashboard() {
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+
+  const handleVivaDiagnostic = async () => {
+    setIsDiagnosing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/viva/diagnostic', {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      });
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast.success(result.message, {
+          description: `Status: ${result.status} | Modo: ${result.mode}`,
+          duration: 5000
+        });
+      } else {
+        throw new Error(result.error || result.details || 'Erro desconhecido');
+      }
+    } catch (error: any) {
+      toast.error('Falha no Diagnóstico Viva Wallet', {
+        description: error.message,
+        duration: 8000
+      });
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -236,9 +264,25 @@ export default function Dashboard() {
   if (user?.role === 'master') {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Painel Master</h1>
-          <p className="text-gray-500 mt-1">Visão geral de todo o ecossistema SaaS.</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Painel Master</h1>
+            <p className="text-gray-500 mt-1">Visão geral de todo o ecossistema SaaS.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleVivaDiagnostic}
+              disabled={isDiagnosing}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+            >
+              {isDiagnosing ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Activity className="w-4 h-4" />
+              )}
+              Testar Viva Wallet (Prod)
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -218,6 +218,46 @@ async function startServer() {
     }
   });
 
+  // Viva Wallet Diagnostic Endpoint
+  app.get("/api/viva/diagnostic", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!supabaseAdmin || !authHeader) return res.status(401).json({ error: "Não autorizado" });
+
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      
+      // Only master admin can run diagnostics
+      const { data: profile } = await supabaseAdmin
+        .from('users')
+        .select('role')
+        .eq('id', user?.id)
+        .single();
+
+      if (profile?.role !== 'master') {
+        return res.status(403).json({ error: "Apenas administradores master podem realizar diagnósticos." });
+      }
+
+      console.log("[VIVA DIAGNOSTIC] Iniciando teste de conectividade...");
+      const accessToken = await getVivaAccessToken();
+      
+      res.json({ 
+        success: true, 
+        message: "Conexão com Viva Wallet (Produção) estabelecida com sucesso!",
+        status: "200 OK",
+        mode: "Production"
+      });
+    } catch (error: any) {
+      console.error("[VIVA DIAGNOSTIC ERROR]", error.message);
+      res.status(500).json({ 
+        success: false, 
+        error: "Falha na conexão com Viva Wallet",
+        details: error.message,
+        mode: "Production"
+      });
+    }
+  });
+
   // Viva Wallet Endpoints
   app.post("/api/viva/create-order", async (req, res) => {
     // console.log("[VIVA] Recebida solicitação de criação de ordem:", req.body);

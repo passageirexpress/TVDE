@@ -49,7 +49,12 @@ BEGIN
     END IF;
 END $$;
 
--- 4. Tabela de Transfers
+-- 4. Atualizar Tabela de Empresas (Companies)
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMPTZ;
+
+-- 5. Tabela de Transfers
 CREATE TABLE IF NOT EXISTS transfers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
