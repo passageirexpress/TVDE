@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { Plus, Search, Car as CarIcon, AlertTriangle, CheckCircle2, MoreVertical, ChevronDown, ChevronUp, History, User, ExternalLink, X, Save, Clock, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 import VehicleDetails from '../components/VehicleDetails';
 
 export default function Vehicles() {
-  const { vehicles, addVehicle, updateVehicle } = useDataStore();
+  const { vehicles, addVehicle, updateVehicle, companies } = useDataStore();
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -24,6 +27,9 @@ export default function Vehicles() {
     status: 'active'
   });
 
+  const company = companies.find(c => c.id === user?.company_id);
+  const plan = company?.plan || 'free';
+
   const handleOpenModal = (vehicle?: any) => {
     setErrors({});
     if (vehicle) {
@@ -38,6 +44,11 @@ export default function Vehicles() {
         status: vehicle.status || 'active'
       });
     } else {
+      if (plan === 'free' && vehicles.length >= 2) {
+        toast.error('Limite de veículos atingido no plano Free. Faça upgrade para adicionar mais.');
+        navigate('/dashboard/subscription');
+        return;
+      }
       setEditingVehicle(null);
       setFormData({
         brand: '',

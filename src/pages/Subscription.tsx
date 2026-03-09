@@ -53,28 +53,24 @@ export default function Subscription() {
       id: 'free',
       name: 'Free',
       price: '0',
-      features: ['Até 2 viaturas', 'Gestão básica', 'Relatórios semanais'],
+      description: 'Ideal para frotas individuais ou em início.',
+      features: ['Até 2 viaturas', 'Gestão de motoristas básica', 'Relatórios semanais', 'Suporte via email'],
       color: 'bg-slate-100 text-slate-600'
-    },
-    {
-      id: 'basic',
-      name: 'Basic',
-      price: '19',
-      features: ['Até 10 viaturas', 'Sincronização API', 'Suporte email'],
-      color: 'bg-blue-50 text-blue-600'
     },
     {
       id: 'pro',
       name: 'Pro',
       price: '49',
-      features: ['Viaturas ilimitadas', 'Sincronização Total', 'Gestão Documental'],
+      description: 'O padrão para frotas em crescimento.',
+      features: ['Viaturas ilimitadas', 'Sincronização Bolt/Uber API', 'Gestão de documentos avançada', 'Alertas de manutenção', 'Suporte prioritário'],
       color: 'bg-sidebar/10 text-sidebar'
     },
     {
       id: 'enterprise',
       name: 'Enterprise',
       price: '99',
-      features: ['Multi-tenant', 'API Customizada', 'Account Manager'],
+      description: 'Para grandes operações multi-empresa.',
+      features: ['Múltiplas empresas (Multi-tenant)', 'API de exportação personalizada', 'Gestor de conta dedicado', 'Formação de equipa', 'SLA de 99.9%'],
       color: 'bg-indigo-50 text-indigo-600'
     }
   ];

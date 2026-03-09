@@ -226,10 +226,18 @@ export default function Drivers() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (currentCompany?.plan === 'free') {
+                    toast.error('Geração de contratos disponível apenas nos planos Pro e Enterprise.');
+                    return;
+                  }
                   setContractDriver(driver);
                   setShowContractModal(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold transition-colors",
+                  currentCompany?.plan === 'free' ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
+                )}
+                title={currentCompany?.plan === 'free' ? 'Disponível no plano Pro' : ''}
               >
                 <FileSignature className="w-4 h-4" />
                 Gerar Contrato TVDE

@@ -149,6 +149,12 @@ export default function Finance() {
   };
 
   const handleSyncUber = async () => {
+    const company = companies.find(c => c.id === user?.company_id);
+    if (company?.plan === 'free') {
+      toast.error('Sincronização com Uber/Bolt disponível apenas nos planos Pro e Enterprise.');
+      return;
+    }
+    
     setIsSyncingUber(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();

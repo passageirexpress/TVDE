@@ -13,7 +13,8 @@ import {
   Check,
   Clock,
   Upload,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -22,6 +23,8 @@ import L from 'leaflet';
 import { Driver, DriverDocument } from '../types';
 import { cn, formatCurrency, isValidNIF } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 
 // Fix for default marker icon in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -38,7 +41,13 @@ interface DriverDetailsProps {
 }
 
 export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetailsProps) {
-  const { uploadDocument } = useDataStore();
+  const { uploadDocument, companies } = useDataStore();
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const company = companies.find(c => c.id === user?.company_id);
+  const plan = company?.plan || 'free';
+  const hasAdvancedDocs = plan === 'pro' || plan === 'enterprise';
+
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState<string | null>(null);
   const [editedDriver, setEditedDriver] = useState<Driver>(driver);
@@ -356,69 +365,93 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
               <section>
                 <div className="flex items-center justify-between mb-4 mt-8">
                   <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Documentação</h3>
-                  <button className="text-xs font-bold text-sidebar hover:underline">Validar Todos</button>
+                  {hasAdvancedDocs && (
+                    <button className="text-xs font-bold text-sidebar hover:underline">Validar Todos</button>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {documents.map((doc: any) => (
-                    <div 
-                      key={doc.id} 
-                      className="p-4 border border-gray-100 rounded-2xl flex flex-col gap-3 hover:border-sidebar/20 transition-colors group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gray-50 rounded-lg text-gray-400 group-hover:text-sidebar transition-colors">
-                            <FileText className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold">{doc.label}</p>
-                            {getStatusBadge(doc.status)}
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => toast.info(`Iniciando download de: ${doc.label}`)}
-                          className="p-2 text-gray-300 hover:text-sidebar transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                          <Clock className="w-3 h-3" />
-                          <span>Expira em: {doc.expiry_date}</span>
-                        </div>
-                        <div className="flex gap-1">
-                          <label className="p-1 text-sidebar hover:bg-sidebar/10 rounded transition-colors cursor-pointer">
-                            <input 
-                              type="file" 
-                              className="hidden" 
-                              onChange={(e) => handleFileUpload(e, doc.id)}
-                              disabled={isUploading === doc.id}
-                            />
-                            {isUploading === doc.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Upload className="w-3.5 h-3.5" />
-                            )}
-                          </label>
-                          <button 
-                            onClick={() => handleValidateDoc(doc.id, 'valid')}
-                            className="p-1 text-emerald-500 hover:bg-emerald-50 rounded transition-colors"
-                            title="Aprovar"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => handleValidateDoc(doc.id, 'rejected')}
-                            className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                            title="Rejeitar"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                
+                {!hasAdvancedDocs ? (
+                  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center flex flex-col items-center">
+                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm mb-4">
+                      <Lock className="w-6 h-6 text-gray-400" />
                     </div>
-                  ))}
-                </div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">Gestão de Documentos Avançada</h4>
+                    <p className="text-sm text-gray-500 max-w-sm mb-6">
+                      Faça upgrade para o plano Pro ou Enterprise para gerir documentos, receber alertas de validade e validar documentação dos motoristas.
+                    </p>
+                    <button 
+                      onClick={() => {
+                        onClose();
+                        navigate('/dashboard/subscription');
+                      }}
+                      className="px-6 py-2 bg-sidebar text-white text-sm font-bold rounded-xl hover:bg-black transition-colors"
+                    >
+                      Fazer Upgrade
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {documents.map((doc: any) => (
+                      <div 
+                        key={doc.id} 
+                        className="p-4 border border-gray-100 rounded-2xl flex flex-col gap-3 hover:border-sidebar/20 transition-colors group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-gray-50 rounded-lg text-gray-400 group-hover:text-sidebar transition-colors">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold">{doc.label}</p>
+                              {getStatusBadge(doc.status)}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => toast.info(`Iniciando download de: ${doc.label}`)}
+                            className="p-2 text-gray-300 hover:text-sidebar transition-colors"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                          <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                            <Clock className="w-3 h-3" />
+                            <span>Expira em: {doc.expiry_date}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            <label className="p-1 text-sidebar hover:bg-sidebar/10 rounded transition-colors cursor-pointer">
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                onChange={(e) => handleFileUpload(e, doc.id)}
+                                disabled={isUploading === doc.id}
+                              />
+                              {isUploading === doc.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Upload className="w-3.5 h-3.5" />
+                              )}
+                            </label>
+                            <button 
+                              onClick={() => handleValidateDoc(doc.id, 'valid')}
+                              className="p-1 text-emerald-500 hover:bg-emerald-50 rounded transition-colors"
+                              title="Aprovar"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => handleValidateDoc(doc.id, 'rejected')}
+                              className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              title="Rejeitar"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             </div>
 

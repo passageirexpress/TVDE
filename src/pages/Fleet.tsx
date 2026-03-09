@@ -59,7 +59,7 @@ export default function Fleet() {
           <p className="text-gray-500 mt-1">Controle total sobre os veículos, manutenção e documentação.</p>
         </div>
         <button 
-          onClick={() => navigate('/vehicles')}
+          onClick={() => navigate('/dashboard/vehicles')}
           className="bg-sidebar text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10"
         >
           <Plus className="w-5 h-5" />
