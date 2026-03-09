@@ -96,7 +96,7 @@ export default function Login() {
   };
 
   const handleCreateAccount = () => {
-    toast.info('Para criar uma conta, por favor entre em contato com o administrador do sistema ou o gestor da sua frota.');
+    navigate('/register');
   };
 
   const handleResetSystem = () => {

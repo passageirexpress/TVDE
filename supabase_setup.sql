@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS users (
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_id_fkey') THEN
+        -- Limpar registos órfãos antes de adicionar a foreign key
+        DELETE FROM users WHERE id NOT IN (SELECT id FROM auth.users);
         ALTER TABLE users ADD CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
     END IF;
 END $$;
@@ -66,6 +68,8 @@ CREATE TABLE IF NOT EXISTS drivers (
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'drivers_id_fkey') THEN
+        -- Limpar registos órfãos antes de adicionar a foreign key
+        DELETE FROM drivers WHERE id NOT IN (SELECT id FROM auth.users);
         ALTER TABLE drivers ADD CONSTRAINT drivers_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
     END IF;
 END $$;
