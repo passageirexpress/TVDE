@@ -49,7 +49,7 @@ async function getVivaAccessToken() {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
-    const response = await axios.post("https://accounts.vivawallet.com/connect/token", params, {
+    const response = await axios.post("https://accounts.vivapayments.com/connect/token", params, {
       timeout: 10000,
       headers: {
         'Authorization': `Basic ${auth}`,
@@ -277,7 +277,7 @@ async function startServer() {
       // Viva Wallet expects amount in cents
       const amountInCents = Math.round(amount * 100);
 
-      const orderResponse = await axios.post("https://api.vivawallet.com/checkout/v2/orders", {
+      const orderResponse = await axios.post("https://api.vivapayments.com/checkout/v2/orders", {
         amount: amountInCents,
         customerTrns: `Assinatura Plano ${planId} - Empresa ${companyId}`,
         customer: {
@@ -304,7 +304,7 @@ async function startServer() {
 
       res.json({ 
         orderCode: orderResponse.data.orderCode,
-        checkoutUrl: `https://www.vivawallet.com/web/checkout?ref=${orderResponse.data.orderCode}`
+        checkoutUrl: `https://www.vivapayments.com/web/checkout?ref=${orderResponse.data.orderCode}`
       });
     } catch (error: any) {
       const errorDetail = error.response?.data?.errors || error.response?.data || error.message;
@@ -324,7 +324,7 @@ async function startServer() {
     try {
       const accessToken = await getVivaAccessToken();
       
-      const response = await axios.get(`https://api.vivawallet.com/checkout/v2/orders/${orderCode}`, {
+      const response = await axios.get(`https://api.vivapayments.com/checkout/v2/orders/${orderCode}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -366,7 +366,7 @@ async function startServer() {
       // 1. Process the transaction using Native Checkout API
       // Note: In a real production environment, you should use card tokenization 
       // to avoid handling raw card data on your server (PCI compliance).
-      const response = await axios.post("https://api.vivawallet.com/checkout/v2/transactions", {
+      const response = await axios.post("https://api.vivapayments.com/nativecheckout/v2/transactions", {
         orderCode,
         card
       }, {
@@ -451,7 +451,7 @@ async function startServer() {
       
       try {
         const accessToken = await getVivaAccessToken();
-        const orderRes = await axios.get(`https://api.vivawallet.com/checkout/v2/orders/${orderCode}`, {
+        const orderRes = await axios.get(`https://api.vivapayments.com/checkout/v2/orders/${orderCode}`, {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
@@ -498,7 +498,12 @@ async function startServer() {
         .select()
         .single();
 
-      if (companyError) throw companyError;
+      if (companyError) {
+        if (companyError.message.includes('companies_nif_key')) {
+          throw new Error("Já existe uma empresa registada com este NIF.");
+        }
+        throw companyError;
+      }
 
       // 2. If admin details are provided, create the admin user
       if (admin_email && admin_password) {
@@ -573,6 +578,9 @@ async function startServer() {
 
       if (companyError) {
         console.error("[REGISTER ERROR] Falha ao criar empresa:", companyError.message);
+        if (companyError.message.includes('companies_nif_key')) {
+          throw new Error("Já existe uma empresa registada com este NIF.");
+        }
         throw companyError;
       }
 
@@ -590,6 +598,11 @@ async function startServer() {
         console.error("[REGISTER ERROR] Falha ao criar usuário no Auth:", authError.message);
         // Cleanup company if auth fails
         await supabaseAdmin.from('companies').delete().eq('id', companyId);
+        
+        if (authError.message.includes('Database error creating new user')) {
+          throw new Error("Erro na base de dados ao criar utilizador. Isto acontece geralmente quando existe um 'Trigger' no Supabase (ex: on_auth_user_created) que está a falhar. Por favor, vá ao painel do Supabase > Database > Triggers e elimine qualquer trigger na tabela auth.users, ou execute: DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;");
+        }
+        
         throw authError;
       }
 
@@ -613,6 +626,11 @@ async function startServer() {
         // Cleanup Auth user and company if profile creation fails
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
         await supabaseAdmin.from('companies').delete().eq('id', companyId);
+        
+        if (profileError.message.includes('column "password" of relation "users" violates not-null constraint')) {
+          throw new Error("A sua tabela 'users' no Supabase tem uma coluna 'password' obrigatória, o que entra em conflito com o sistema de autenticação seguro. Por favor, vá ao SQL Editor no Supabase e execute: ALTER TABLE users ALTER COLUMN password DROP NOT NULL; ou remova a coluna completamente com: ALTER TABLE users DROP COLUMN password;");
+        }
+        
         throw new Error(`Erro ao criar perfil de utilizador: ${profileError.message}`);
       }
 
@@ -654,7 +672,7 @@ async function startServer() {
           const sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
           const amountInCents = Math.round(amount * 100);
 
-          const orderResponse = await axios.post("https://api.vivawallet.com/checkout/v2/orders", {
+          const orderResponse = await axios.post("https://api.vivapayments.com/checkout/v2/orders", {
             amount: amountInCents,
             customerTrns: `Assinatura Plano ${plan} - Empresa ${companyId}`,
             customer: {
@@ -679,7 +697,7 @@ async function startServer() {
           });
 
           orderCode = orderResponse.data.orderCode;
-          checkoutUrl = `https://www.vivawallet.com/web/checkout?ref=${orderCode}`;
+          checkoutUrl = `https://www.vivapayments.com/web/checkout?ref=${orderCode}`;
           
           // Update company status to incomplete pending payment
           await supabaseAdmin
@@ -698,6 +716,9 @@ async function startServer() {
       res.json({ success: true, company, user: authData.user, checkoutUrl, orderCode });
     } catch (error: any) {
       console.error("[REGISTER FATAL ERROR]", error.message);
+      if (error.message?.includes('Invalid API key')) {
+        return res.status(400).json({ error: "A chave da API do Supabase é inválida. Por favor, verifique a variável SUPABASE_SERVICE_ROLE_KEY no servidor." });
+      }
       res.status(400).json({ error: error.message });
     }
   });
@@ -767,6 +788,11 @@ async function startServer() {
         console.error(`[CREATE USER ERROR] Falha ao criar perfil na tabela ${table}:`, profileError.message, profileError.details);
         // Cleanup Auth user if profile creation fails
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        
+        if (profileError.message.includes('column "password" of relation "users" violates not-null constraint')) {
+          throw new Error("A sua tabela 'users' no Supabase tem uma coluna 'password' obrigatória. Por favor, vá ao SQL Editor no Supabase e execute: ALTER TABLE users DROP COLUMN password;");
+        }
+        
         throw new Error(`Erro de base de dados ao criar perfil: ${profileError.message}`);
       }
 
@@ -804,6 +830,9 @@ async function startServer() {
       res.json({ success: true, user: authData.user });
     } catch (error: any) {
       console.error("Create User Error:", error.message);
+      if (error.message?.includes('Invalid API key')) {
+        return res.status(400).json({ error: "A chave da API do Supabase é inválida. Por favor, verifique a variável SUPABASE_SERVICE_ROLE_KEY no servidor." });
+      }
       res.status(400).json({ error: error.message });
     }
   });

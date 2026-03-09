@@ -81,9 +81,16 @@ export default function Register() {
       }
     } catch (error: any) {
       console.error('Register error:', error);
-      const errorMessage = error.message === 'Failed to fetch'
-        ? 'Falha de conexão com o servidor. Verifique se o URL do Supabase está correto (deve começar com https://) e se a sua ligação à internet está ativa.'
-        : error.message || 'Erro ao processar o registo.';
+      let errorMessage = error.message;
+      
+      if (errorMessage === 'Failed to fetch') {
+        errorMessage = 'Falha de conexão com o servidor. Verifique se o URL do Supabase está correto (deve começar com https://) e se a sua ligação à internet está ativa.';
+      } else if (errorMessage?.includes('Invalid API key')) {
+        errorMessage = 'A chave da API do Supabase é inválida. Por favor, verifique as variáveis VITE_SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY nas configurações do projeto.';
+      } else if (!errorMessage) {
+        errorMessage = 'Erro ao processar o registo.';
+      }
+      
       toast.error(errorMessage);
     } finally {
       setLoading(false);

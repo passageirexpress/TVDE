@@ -53,6 +53,9 @@ export default function Login() {
         if (error?.message === 'Invalid login credentials') {
           throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
         }
+        if (error?.message?.includes('Invalid API key')) {
+          throw new Error('A chave da API do Supabase é inválida. Por favor, verifique a variável VITE_SUPABASE_ANON_KEY nas configurações do projeto.');
+        }
         throw error || new Error('Falha na autenticação.');
       }
 
