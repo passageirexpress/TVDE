@@ -3,22 +3,32 @@ import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap, Palette, Image as
 import { toast } from 'sonner';
 import { CompanySettings } from '../types';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { supabase } from '../lib/supabase';
+import { Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
-  const { settings: storeSettings, updateSettings } = useDataStore();
+  const { settings: storeSettings, updateSettings, companies } = useDataStore();
+  const user = useAuthStore(state => state.user);
+  const navigate = useNavigate();
   const [settings, setSettings] = useState<CompanySettings>(storeSettings);
   const [isSaving, setIsSaving] = useState(false);
+
+  const company = companies.find(c => c.id === user?.company_id);
+  const isFreePlan = company?.plan === 'free';
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/settings/update', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
           bolt_client_id: settings.bolt_client_id,
@@ -124,7 +134,23 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-100">
+          <div className="pt-8 border-t border-gray-100 relative">
+            {isFreePlan && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center mb-4">
+                  <Lock className="w-6 h-6 text-sidebar" />
+                </div>
+                <h4 className="text-lg font-black tracking-tighter uppercase">Personalização Premium</h4>
+                <p className="text-xs text-gray-500 max-w-[240px] mt-1 mb-4">Faça upgrade para o plano Pro para personalizar o dashboard com a sua marca.</p>
+                <button 
+                  type="button"
+                  onClick={() => navigate('/dashboard/subscription')}
+                  className="px-6 py-2 bg-sidebar text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-black transition-all"
+                >
+                  Ver Planos
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
                 <Palette className="w-6 h-6" />
@@ -170,7 +196,23 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-gray-100">
+          <div className="pt-8 border-t border-gray-100 relative">
+            {isFreePlan && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center mb-4">
+                  <Lock className="w-6 h-6 text-sidebar" />
+                </div>
+                <h4 className="text-lg font-black tracking-tighter uppercase">Integração API Premium</h4>
+                <p className="text-xs text-gray-500 max-w-[240px] mt-1 mb-4">A sincronização automática com Uber e Bolt está disponível apenas nos planos Pro e Enterprise.</p>
+                <button 
+                  type="button"
+                  onClick={() => navigate('/dashboard/subscription')}
+                  className="px-6 py-2 bg-sidebar text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-black transition-all"
+                >
+                  Ver Planos
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-4 mb-6">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
                 <Zap className="w-6 h-6" />

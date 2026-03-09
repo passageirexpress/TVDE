@@ -32,6 +32,7 @@ import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { formatCurrency, cn, getUberPeriod } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { supabase } from '../lib/supabase';
 
 interface ImportedData {
@@ -54,7 +55,8 @@ interface ImportedData {
 const initialPayments: ImportedData[] = [];
 
 export default function Finance() {
-  const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, addDriver, addVehicle, vehicles, calculateDriverSettlement, addPayment } = useDataStore();
+  const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, addDriver, addVehicle, vehicles, calculateDriverSettlement, addPayment, companies } = useDataStore();
+  const user = useAuthStore(state => state.user);
   const [activeTab, setActiveTab] = useState('overview');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState<ImportedData | null>(null);

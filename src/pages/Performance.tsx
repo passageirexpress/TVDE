@@ -29,6 +29,8 @@ import {
 import { toast } from 'sonner';
 import { formatCurrency } from '../lib/utils';
 import { useDataStore } from '../store/useDataStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { supabase } from '../lib/supabase';
 
 const data = [
   { name: 'Seg', earnings: 4000, expenses: 2400 },
@@ -48,7 +50,8 @@ const pieData = [
 const COLORS = ['#050505', '#00FF00'];
 
 export default function Performance() {
-  const { drivers, vehicles, payments, expenses, fetchFromSupabase } = useDataStore();
+  const { drivers, vehicles, payments, expenses, companies, fetchFromSupabase } = useDataStore();
+  const user = useAuthStore(state => state.user);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const totalRevenue = payments.reduce((acc, p) => acc + (p.gross_revenue || p.gross || 0), 0);
@@ -72,9 +75,18 @@ export default function Performance() {
   ];
 
   const handleSync = async () => {
+    const company = companies.find(c => c.id === user?.company_id);
+    if (company?.plan === 'free') {
+      toast.error('Sincronização com Uber/Bolt disponível apenas nos planos Pro e Enterprise.');
+      return;
+    }
+
     setIsSyncing(true);
     try {
-      const token = localStorage.getItem('sb-access-token');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (!token) throw new Error('Sessão expirada. Por favor, faça login novamente.');
       
       // Sync Bolt
       const boltRes = await fetch('/api/bolt/sync', {

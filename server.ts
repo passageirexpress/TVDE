@@ -85,6 +85,12 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Request logging
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} [${req.method}] ${req.url}`);
+    next();
+  });
+
   // Resend Email Endpoint for Notifications
   app.post("/api/notifications/send", async (req, res) => {
     const authHeader = req.headers.authorization;
@@ -1028,7 +1034,11 @@ async function startServer() {
         .single();
 
       if (!profile?.company_id || profile.role !== 'admin') {
-        return res.status(403).json({ error: "Apenas administradores podem atualizar as configurações da empresa." });
+        console.warn(`[SETTINGS] 403 Forbidden: User ${user.id} is not an admin or has no company`);
+        return res.status(403).json({ 
+          error: "Apenas administradores podem atualizar as configurações da empresa.",
+          details: "O seu perfil de utilizador deve ter a função 'admin' e estar associado a uma empresa."
+        });
       }
 
       // Prepare data for upsert, only include secrets if they are provided
@@ -1086,7 +1096,11 @@ async function startServer() {
         .single();
 
       if (!profile?.company_id) {
-        return res.status(403).json({ error: "Empresa não encontrada para este usuário." });
+        console.warn(`[BOLT SYNC] 403 Forbidden: Company not found for user ${user.id}`);
+        return res.status(403).json({ 
+          error: "Empresa não encontrada para este usuário.",
+          details: "O seu perfil de utilizador não está associado a nenhuma empresa. Verifique a tabela 'users' no Supabase."
+        });
       }
 
       // Fetch Bolt credentials from settings table
@@ -1198,7 +1212,11 @@ async function startServer() {
         .single();
 
       if (!profile?.company_id) {
-        return res.status(403).json({ error: "Empresa não encontrada para este usuário." });
+        console.warn(`[UBER SYNC] 403 Forbidden: Company not found for user ${user.id}`);
+        return res.status(403).json({ 
+          error: "Empresa não encontrada para este usuário.",
+          details: "O seu perfil de utilizador não está associado a nenhuma empresa. Verifique a tabela 'users' no Supabase."
+        });
       }
 
       // Fetch Uber credentials from settings table
@@ -1300,6 +1318,16 @@ async function startServer() {
       res.sendFile(path.join(__dirname, "dist", "index.html"));
     });
   }
+
+  // 404 Handler for API routes
+  app.use((req, res) => {
+    if (req.url.startsWith('/api')) {
+      console.warn(`[404] API Route not found: ${req.method} ${req.url}`);
+      res.status(404).json({ error: "API route not found" });
+    } else {
+      console.warn(`[404] Page not found: ${req.url}`);
+    }
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

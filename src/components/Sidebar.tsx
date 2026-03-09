@@ -137,7 +137,7 @@ const driverGroups: NavGroup[] = [
 function SidebarGroup({ group, onClose }: { group: NavGroup, onClose: () => void }) {
   const location = useLocation();
   const isActiveGroup = group.items.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'));
-  const [isOpen, setIsOpen] = useState(isActiveGroup || true); // Default to open for better UX, or just use isActiveGroup
+  const [isOpen, setIsOpen] = useState<boolean>(true);
   
   return (
     <div className="mb-4">
