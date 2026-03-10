@@ -15,7 +15,8 @@ import {
   X,
   ChevronRight,
   Edit2,
-  Save
+  Save,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -25,7 +26,7 @@ import { Client } from '../types';
 
 export default function Clients() {
   const user = useAuthStore(state => state.user);
-  const { clients, addClient, updateClient } = useDataStore();
+  const { clients, addClient, updateClient, deleteClient } = useDataStore();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -38,6 +39,17 @@ export default function Clients() {
     address: '',
     type: 'corporate'
   });
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este cliente? Esta ação não pode ser revertida.')) {
+      try {
+        deleteClient(id);
+        toast.success('Cliente eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar cliente: ' + error.message);
+      }
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,9 +136,18 @@ export default function Clients() {
                 )}>
                   {getClientIcon(client.type)}
                 </div>
-                <button className="p-2 text-gray-300 hover:text-sidebar transition-colors">
-                  <Edit2 className="w-4 h-4" />
-                </button>
+                <div className="flex gap-2">
+                  <button className="p-2 text-gray-300 hover:text-sidebar transition-colors" title="Editar">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(client.id)}
+                    className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               
               <div className="space-y-4">

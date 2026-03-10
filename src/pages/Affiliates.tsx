@@ -12,7 +12,8 @@ import {
   Clock,
   ArrowUpRight,
   ChevronRight,
-  Building2
+  Building2,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDataStore } from '../store/useDataStore';
@@ -21,7 +22,7 @@ import { formatCurrency } from '../lib/utils';
 import { cn } from '../lib/utils';
 
 export default function AffiliatesPage() {
-  const { companies, affiliates, addAffiliate, updateAffiliate } = useDataStore();
+  const { companies, affiliates, addAffiliate, updateAffiliate, deleteAffiliate } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredAffiliates = affiliates.filter(a => {
@@ -53,6 +54,17 @@ export default function AffiliatesPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Link copiado para a área de transferência!');
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este afiliado? Esta ação não pode ser revertida.')) {
+      try {
+        deleteAffiliate(id);
+        toast.success('Afiliado eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar afiliado: ' + error.message);
+      }
+    }
   };
 
   return (
@@ -196,9 +208,18 @@ export default function AffiliatesPage() {
                         </span>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(a.id)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -15,7 +15,8 @@ import {
   Edit2,
   Save,
   BarChart as BarChartIcon,
-  Upload
+  Upload,
+  Trash2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -36,7 +37,7 @@ import { useDataStore } from '../store/useDataStore';
 
 export default function Expenses() {
   const user = useAuthStore(state => state.user);
-  const { expenses, addExpense, updateExpense, drivers: driversData } = useDataStore();
+  const { expenses, addExpense, updateExpense, deleteExpense, drivers: driversData } = useDataStore();
   
   // Calculate totals for the last 30 days
   const last30Days = new Date();
@@ -145,6 +146,17 @@ export default function Expenses() {
     }
     return matchesSearch && matchesCategory && matchesDate;
   });
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar esta despesa? Esta ação não pode ser revertida.')) {
+      try {
+        deleteExpense(id);
+        toast.success('Despesa eliminada com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar despesa: ' + error.message);
+      }
+    }
+  };
 
   const handleOpenModal = (expense?: Expense) => {
     if (expense) {
@@ -428,6 +440,13 @@ export default function Expenses() {
                           className="p-2 text-gray-400 hover:text-sidebar transition-colors"
                         >
                           <FileText className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(expense.id)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                         {user?.role === 'admin' && expense.status === 'pending' && (
                           <>

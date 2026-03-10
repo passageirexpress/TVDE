@@ -11,7 +11,8 @@ import {
   Plus,
   MoreVertical,
   Car,
-  Zap
+  Zap,
+  Trash2
 } from 'lucide-react';
 import { useDataStore } from '../store/useDataStore';
 import { Driver, Contract } from '../types';
@@ -19,7 +20,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
 export default function Contracts() {
-  const { drivers, contracts, addContract, updateContract } = useDataStore();
+  const { drivers, contracts, addContract, updateContract, deleteContract } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'tvde' | 'uber' | 'bolt'>('all');
 
@@ -49,6 +50,18 @@ export default function Contracts() {
 
   const handleAction = (driverName: string, action: string) => {
     toast.success(`${action} para ${driverName} concluído com sucesso!`);
+  };
+
+  const handleDelete = (driverId: string) => {
+    if (confirm('Tem a certeza que deseja eliminar os contratos deste motorista? Esta ação não pode ser revertida.')) {
+      try {
+        const driverContracts = contracts.filter(c => c.driver_id === driverId);
+        driverContracts.forEach(c => deleteContract(c.id));
+        toast.success('Contratos eliminados com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar contratos: ' + error.message);
+      }
+    }
   };
 
   return (
@@ -176,6 +189,13 @@ export default function Contracts() {
                           title="Download PDF"
                         >
                           <Download className="w-5 h-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(driver.id)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar Contratos"
+                        >
+                          <Trash2 className="w-5 h-5" />
                         </button>
                         <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-sidebar/5 rounded-lg transition-all">
                           <MoreVertical className="w-5 h-5" />

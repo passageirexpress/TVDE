@@ -67,11 +67,13 @@ interface DataState {
   // Notifications
   addNotification: (notification: AppNotification) => void;
   markNotificationsAsRead: () => void;
+  deleteNotification: (id: string) => void;
   
   // Payments
   setPayments: (payments: Payment[]) => void;
   addPayment: (payment: Payment) => void;
   updatePayment: (id: string, updatedPayment: Partial<Payment>) => void;
+  deletePayment: (id: string) => void;
   
   // Earnings
   addEarningImport: (earning: EarningImport) => void;
@@ -752,6 +754,9 @@ export const useDataStore = create<DataState>()(
       markNotificationsAsRead: () => set((state) => ({
         notifications: state.notifications.map(n => ({ ...n, read: true }))
       })),
+      deleteNotification: (id) => set((state) => ({
+        notifications: state.notifications.filter(n => n.id !== id)
+      })),
 
       // Payments
       setPayments: (payments) => set({ payments }),
@@ -765,6 +770,12 @@ export const useDataStore = create<DataState>()(
           const updated = payments.find(p => p.id === id);
           if (updated) get().saveToSupabase('payments', updated);
           return { payments };
+        });
+      },
+      deletePayment: (id) => {
+        set((state) => ({ payments: state.payments.filter(p => p.id !== id) }));
+        supabase.from('payments').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting payment:', error);
         });
       },
 

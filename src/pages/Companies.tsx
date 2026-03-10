@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Plus, Search, Building2, Mail, MoreHorizontal, X, Save, ShieldCheck } from 'lucide-react';
+import { Plus, Search, Building2, Mail, MoreHorizontal, X, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Company } from '../types';
 import { useDataStore } from '../store/useDataStore';
 
 export default function Companies() {
-  const { companies, addCompany, updateCompany } = useDataStore();
+  const { companies, addCompany, updateCompany, deleteCompany } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -22,6 +22,17 @@ export default function Companies() {
     admin_email: '',
     admin_password: ''
   });
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar esta empresa? Esta ação não pode ser revertida e eliminará todos os dados associados.')) {
+      try {
+        deleteCompany(id);
+        toast.success('Empresa eliminada com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar empresa: ' + error.message);
+      }
+    }
+  };
 
   const handleOpenModal = (company?: Company) => {
     if (company) {
@@ -163,12 +174,22 @@ export default function Companies() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <button 
-                      onClick={() => handleOpenModal(company)}
-                      className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleOpenModal(company)}
+                        className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors"
+                        title="Editar"
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(company.id)}
+                        className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

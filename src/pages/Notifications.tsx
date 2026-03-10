@@ -5,11 +5,16 @@ import { useDataStore } from '../store/useDataStore';
 import { cn } from '../lib/utils';
 
 export default function Notifications() {
-  const { notifications, markNotificationsAsRead } = useDataStore();
+  const { notifications, markNotificationsAsRead, deleteNotification } = useDataStore();
 
   const handleMarkAllAsRead = () => {
     markNotificationsAsRead();
     toast.success('Todas as notificações foram marcadas como lidas.');
+  };
+
+  const handleDelete = (id: string) => {
+    deleteNotification(id);
+    toast.success('Notificação eliminada.');
   };
 
   return (
@@ -54,9 +59,18 @@ export default function Notifications() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                     <h4 className="font-bold text-gray-900 text-lg truncate">{n.title}</h4>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                      {n.date}
-                    </span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                        {n.date}
+                      </span>
+                      <button 
+                        onClick={() => handleDelete(n.id)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-gray-600 leading-relaxed max-w-3xl">{n.message}</p>
                   {!n.read && (

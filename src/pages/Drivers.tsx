@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Plus, Search, Filter, MoreHorizontal, UserCheck, UserX, FileText, Download, ChevronLeft, ChevronRight, AlertCircle, FileSignature } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, UserCheck, UserX, FileText, Download, ChevronLeft, ChevronRight, AlertCircle, FileSignature, Trash2 } from 'lucide-react';
 // @ts-ignore
 import { FixedSizeList as List } from 'react-window';
 import { toast } from 'sonner';
@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/useAuthStore';
 const ITEMS_PER_PAGE = 20;
 
 export default function Drivers() {
-  const { drivers, companies, addDriver, updateDriver, createUserAuth } = useDataStore();
+  const { drivers, companies, addDriver, updateDriver, deleteDriver, createUserAuth } = useDataStore();
   const currentUser = useAuthStore(state => state.user);
   const currentCompany = useMemo(() => {
     return companies.find(c => c.id === currentUser?.company_id) || null;
@@ -125,6 +125,17 @@ export default function Drivers() {
     }
   };
 
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este motorista? Esta ação não pode ser revertida.')) {
+      try {
+        deleteDriver(id);
+        toast.success('Motorista eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar motorista: ' + error.message);
+      }
+    }
+  };
+
   const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
     const driver = filteredDrivers[index];
     if (!driver) return null;
@@ -171,7 +182,7 @@ export default function Drivers() {
           <div className="w-24 px-2 hidden lg:block text-center">
             <span className="text-xs font-bold text-gray-900">{driver.rating_bolt || '0.0'} ★</span>
           </div>
-          <div className="w-20 text-right">
+          <div className="w-20 text-right flex items-center justify-end gap-1">
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -180,6 +191,16 @@ export default function Drivers() {
               className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors"
             >
               <MoreHorizontal className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(driver.id);
+              }}
+              className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              title="Eliminar Motorista"
+            >
+              <Trash2 className="w-5 h-5" />
             </button>
           </div>
         </div>

@@ -28,7 +28,7 @@ export default function Services() {
   const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const { 
-    transfers, deliveries, addTransfer, addDelivery, updateTransfer, 
+    transfers, deliveries, addTransfer, addDelivery, updateTransfer, deleteTransfer, deleteDelivery,
     drivers, clients, settings, deliveryPoints, addDeliveryPoint, 
     updateDeliveryPoint, deleteDeliveryPoint 
   } = useDataStore();
@@ -116,6 +116,21 @@ export default function Services() {
       pickup_location: pickupAddress?.label || '',
       dropoff_location: dropoffAddress?.label || ''
     }));
+  };
+
+  const handleDeleteService = (id: string, type: 'transfer' | 'delivery') => {
+    if (confirm('Tem a certeza que deseja eliminar este serviço? Esta ação não pode ser revertida.')) {
+      try {
+        if (type === 'transfer') {
+          deleteTransfer(id);
+        } else {
+          deleteDelivery(id);
+        }
+        toast.success('Serviço eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar serviço: ' + error.message);
+      }
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -396,9 +411,20 @@ export default function Services() {
                       </div>
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <button className="p-2 text-gray-400 hover:text-sidebar transition-colors">
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button className="p-2 text-gray-400 hover:text-sidebar transition-colors">
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                        {user?.role === 'admin' && (
+                          <button 
+                            onClick={() => handleDeleteService(service.id, service.type)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -421,7 +447,12 @@ export default function Services() {
                   {point.type === 'restaurant' ? <Euro className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
                 </div>
                 <button 
-                  onClick={() => deleteDeliveryPoint(point.id)}
+                  onClick={() => {
+                    if (confirm('Tem a certeza que deseja eliminar este ponto de entrega?')) {
+                      deleteDeliveryPoint(point.id);
+                      toast.success('Ponto de entrega eliminado!');
+                    }
+                  }}
                   className="p-2 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 className="w-4 h-4" />

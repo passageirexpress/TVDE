@@ -26,7 +26,8 @@ import {
   X,
   Zap,
   Calendar,
-  User as UserIcon
+  User as UserIcon,
+  Trash2
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
@@ -55,7 +56,7 @@ interface ImportedData {
 const initialPayments: ImportedData[] = [];
 
 export default function Finance() {
-  const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, addDriver, addVehicle, vehicles, calculateDriverSettlement, addPayment, companies } = useDataStore();
+  const { expenses, clearAllData, drivers, addNotification, payments, setPayments, updatePayment, deletePayment, addDriver, addVehicle, vehicles, calculateDriverSettlement, addPayment, companies } = useDataStore();
   const user = useAuthStore(state => state.user);
   const [activeTab, setActiveTab] = useState('overview');
   const [showImportModal, setShowImportModal] = useState(false);
@@ -567,6 +568,17 @@ export default function Finance() {
       date: new Date().toISOString().split('T')[0],
       read: false
     });
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este pagamento? Esta ação não pode ser revertida.')) {
+      try {
+        deletePayment(id);
+        toast.success('Pagamento eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar pagamento: ' + error.message);
+      }
+    }
   };
 
   const [startDate, setStartDate] = useState<string>('');
@@ -1277,6 +1289,13 @@ export default function Finance() {
                           className="text-sidebar text-xs font-bold hover:underline"
                         >
                           Ver Detalhes
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(p.id)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar Pagamento"
+                        >
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </td>

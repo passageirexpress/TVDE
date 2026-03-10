@@ -242,6 +242,13 @@ export default function Vehicles() {
                     >
                       <MoreVertical className="w-4 h-4" />
                     </button>
+                    <button 
+                      onClick={() => handleDeleteVehicle(v.id, v.plate)}
+                      className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Shield, Mail, MoreHorizontal, UserPlus, X, Save } from 'lucide-react';
+import { Plus, Search, Shield, Mail, MoreHorizontal, UserPlus, X, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { User } from '../types';
@@ -7,7 +7,7 @@ import { useDataStore } from '../store/useDataStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function Users() {
-  const { users, addUser, updateUser, createUserAuth, companies } = useDataStore();
+  const { users, addUser, updateUser, createUserAuth, deleteUser, companies } = useDataStore();
   const user = useAuthStore(state => state.user);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -74,6 +74,17 @@ export default function Users() {
       toast.error(error.message || 'Erro ao salvar usuário');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este usuário? Esta ação não pode ser revertida.')) {
+      try {
+        deleteUser(id);
+        toast.success('Usuário eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar usuário: ' + error.message);
+      }
     }
   };
 
@@ -169,12 +180,24 @@ export default function Users() {
                     {getRoleBadge(u.role)}
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <button 
-                      onClick={() => handleOpenModal(u)}
-                      className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleOpenModal(u)}
+                        className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors"
+                        title="Editar"
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                      {user?.id !== u.id && (
+                        <button 
+                          onClick={() => handleDelete(u.id)}
+                          className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

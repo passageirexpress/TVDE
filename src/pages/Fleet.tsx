@@ -14,14 +14,16 @@ import {
   Calendar,
   History,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useDataStore } from '../store/useDataStore';
 import { formatCurrency } from '../lib/utils';
 import { cn } from '../lib/utils';
 
 export default function Fleet() {
-  const { vehicles } = useDataStore();
+  const { vehicles, deleteVehicle } = useDataStore();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -48,6 +50,17 @@ export default function Fleet() {
         return <span className="bg-gray-50 text-gray-700 px-2.5 py-0.5 rounded-full text-xs font-bold border border-gray-100 flex items-center gap-1 w-fit"><Clock className="w-3 h-3" /> Inativo</span>;
       default:
         return null;
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este veículo? Esta ação não pode ser revertida.')) {
+      try {
+        deleteVehicle(id);
+        toast.success('Veículo eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar veículo: ' + error.message);
+      }
     }
   };
 
@@ -189,6 +202,13 @@ export default function Fleet() {
                         </button>
                         <button className="p-2 text-gray-400 hover:text-sidebar rounded-lg hover:bg-gray-100 transition-colors">
                           <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(vehicle.id)}
+                          className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </td>

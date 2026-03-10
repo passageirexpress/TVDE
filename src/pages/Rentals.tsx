@@ -13,7 +13,8 @@ import {
   Key,
   ChevronRight,
   Edit2,
-  Save
+  Save,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '../lib/utils';
@@ -23,7 +24,7 @@ import { useDataStore } from '../store/useDataStore';
 
 export default function Rentals() {
   const user = useAuthStore(state => state.user);
-  const { rentals, addRental, updateRental, approveRental, rejectRental, vehicles, drivers } = useDataStore();
+  const { rentals, addRental, updateRental, deleteRental, approveRental, rejectRental, vehicles, drivers } = useDataStore();
   const [showModal, setShowModal] = useState(false);
   const [editingRental, setEditingRental] = useState<Rental | null>(null);
   const [formData, setFormData] = useState<Partial<Rental>>({
@@ -32,6 +33,17 @@ export default function Rentals() {
     security_deposit: 500.00,
     vehicle_id: ''
   });
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este aluguel? Esta ação não pode ser revertida.')) {
+      try {
+        deleteRental(id);
+        toast.success('Aluguel eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar aluguel: ' + error.message);
+      }
+    }
+  };
 
   const handleOpenModal = (rental?: Rental) => {
     if (rental) {
@@ -127,13 +139,22 @@ export default function Rentals() {
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
                   {user?.role === 'admin' && (
-                    <button 
-                      onClick={() => handleOpenModal(rental)}
-                      className="p-2 bg-white/90 backdrop-blur-sm text-gray-600 rounded-full hover:text-sidebar shadow-sm transition-all"
-                      title="Editar"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => handleOpenModal(rental)}
+                        className="p-2 bg-white/90 backdrop-blur-sm text-gray-600 rounded-full hover:text-sidebar shadow-sm transition-all"
+                        title="Editar"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(rental.id)}
+                        className="p-2 bg-white/90 backdrop-blur-sm text-red-600 rounded-full hover:bg-red-50 shadow-sm transition-all"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   )}
                   <span className={cn(
                     "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
