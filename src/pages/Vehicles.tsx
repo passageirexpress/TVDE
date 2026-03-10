@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Car as CarIcon, AlertTriangle, CheckCircle2, MoreVertical, ChevronDown, ChevronUp, History, User, ExternalLink, X, Save, Clock, Eye } from 'lucide-react';
+import { Plus, Search, Car as CarIcon, AlertTriangle, CheckCircle2, MoreVertical, ChevronDown, ChevronUp, History, User, ExternalLink, X, Save, Clock, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import VehicleDetails from '../components/VehicleDetails';
 
 export default function Vehicles() {
-  const { vehicles, addVehicle, updateVehicle, companies } = useDataStore();
+  const { vehicles, addVehicle, updateVehicle, deleteVehicle, companies } = useDataStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +61,17 @@ export default function Vehicles() {
       });
     }
     setShowModal(true);
+  };
+
+  const handleDeleteVehicle = async (id: string, plate: string) => {
+    if (confirm(`Tem a certeza que deseja eliminar a viatura ${plate}? Esta ação não pode ser revertida.`)) {
+      try {
+        await deleteVehicle(id);
+        toast.success('Viatura eliminada com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar viatura: ' + error.message);
+      }
+    }
   };
 
   const handleSave = () => {

@@ -23,7 +23,7 @@ import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
 export default function ClaimsPage() {
-  const { vehicles, drivers, claims, addClaim, updateClaim } = useDataStore();
+  const { vehicles, drivers, claims, addClaim, updateClaim, deleteClaim } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +66,26 @@ export default function ClaimsPage() {
       toast.error('Erro ao reportar sinistro: ' + error.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: Claim['status']) => {
+    try {
+      await updateClaim(id, { status: newStatus });
+      toast.success(`Status da ocorrência atualizado para ${getStatusLabel(newStatus)}`);
+    } catch (error: any) {
+      toast.error('Erro ao atualizar status: ' + error.message);
+    }
+  };
+
+  const handleDeleteClaim = async (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este registo de sinistro?')) {
+      try {
+        await deleteClaim(id);
+        toast.success('Sinistro eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar sinistro: ' + error.message);
+      }
     }
   };
 
@@ -242,12 +262,57 @@ export default function ClaimsPage() {
                       </td>
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
+                          <button 
+                            onClick={() => toast.info('A abrir visualizador de evidências...')}
+                            className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all"
+                            title="Ver Evidências"
+                          >
                             <FileText className="w-5 h-5" />
                           </button>
-                          <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
-                            <MoreVertical className="w-5 h-5" />
-                          </button>
+                          
+                          <div className="relative group/menu">
+                            <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
+                              <MoreVertical className="w-5 h-5" />
+                            </button>
+                            
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 hidden group-hover/menu:block animate-in fade-in zoom-in-95 duration-200">
+                              {c.status === 'reported' && (
+                                <button 
+                                  onClick={() => handleStatusChange(c.id, 'in_progress')}
+                                  className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 font-bold flex items-center gap-2"
+                                >
+                                  <Clock className="w-4 h-4" />
+                                  Em Processamento
+                                </button>
+                              )}
+                              {c.status !== 'resolved' && (
+                                <button 
+                                  onClick={() => handleStatusChange(c.id, 'resolved')}
+                                  className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 font-bold flex items-center gap-2"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  Marcar Resolvido
+                                </button>
+                              )}
+                              {c.status !== 'rejected' && (
+                                <button 
+                                  onClick={() => handleStatusChange(c.id, 'rejected')}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-2"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                  Rejeitar Processo
+                                </button>
+                              )}
+                              <div className="h-px bg-gray-100 my-2"></div>
+                              <button 
+                                onClick={() => handleDeleteClaim(c.id)}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 font-bold flex items-center gap-2"
+                              >
+                                <X className="w-4 h-4" />
+                                Eliminar Registo
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>

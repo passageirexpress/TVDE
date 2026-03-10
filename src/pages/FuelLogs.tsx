@@ -12,7 +12,9 @@ import {
   X, 
   ChevronRight,
   Droplets,
-  Zap
+  Zap,
+  MoreVertical,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '../lib/utils';
@@ -22,7 +24,7 @@ import { FuelLog } from '../types';
 
 export default function FuelLogs() {
   const user = useAuthStore(state => state.user);
-  const { fuelLogs, addFuelLog, vehicles, drivers } = useDataStore();
+  const { fuelLogs, addFuelLog, deleteFuelLog, vehicles, drivers } = useDataStore();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -50,6 +52,17 @@ export default function FuelLogs() {
     addFuelLog(log);
     toast.success('Abastecimento registado!');
     setShowModal(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem a certeza que deseja eliminar este registo de abastecimento?')) {
+      try {
+        await deleteFuelLog(id);
+        toast.success('Registo eliminado com sucesso!');
+      } catch (error: any) {
+        toast.error('Erro ao eliminar registo: ' + error.message);
+      }
+    }
   };
 
   const filteredLogs = fuelLogs.filter(log => {
@@ -179,9 +192,22 @@ export default function FuelLogs() {
                       <p className="text-sm font-black text-gray-900">{formatCurrency(log.total_cost)}</p>
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <button className="p-2 text-gray-400 hover:text-sidebar transition-colors">
-                        <FileText className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => toast.info('A abrir comprovativo...')}
+                          className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all"
+                          title="Ver Comprovativo"
+                        >
+                          <FileText className="w-5 h-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(log.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

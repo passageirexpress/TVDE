@@ -28,6 +28,31 @@ export default function MaintenancePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('all');
 
+  const stats = useMemo(() => {
+    const today = new Date();
+    const next30Days = new Date();
+    next30Days.setDate(today.getDate() + 30);
+
+    const scheduled = maintenances.filter(m => {
+      const mDate = new Date(m.date);
+      return m.status === 'scheduled' && mDate >= today && mDate <= next30Days;
+    }).length;
+
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const totalCost = maintenances.filter(m => {
+      const mDate = new Date(m.date);
+      return mDate.getMonth() === currentMonth && mDate.getFullYear() === currentYear;
+    }).reduce((acc, m) => acc + m.cost, 0);
+
+    const delayed = maintenances.filter(m => {
+      const mDate = new Date(m.date);
+      return m.status === 'scheduled' && mDate < today;
+    }).length;
+
+    return { scheduled, totalCost, delayed };
+  }, [maintenances]);
+
   const filteredMaintenances = maintenances.filter(m => {
     const vehicle = vehicles.find(v => v.id === m.vehicle_id);
     const matchesSearch = vehicle?.plate.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -78,10 +103,10 @@ export default function MaintenancePage() {
             <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
               <Wrench className="w-6 h-6" />
             </div>
-            <span className="text-xs font-bold text-amber-600">Próximas 30 dias</span>
+            <span className="text-xs font-bold text-amber-600">Próximos 30 dias</span>
           </div>
           <p className="text-sm text-gray-500 font-medium">Revisões Agendadas</p>
-          <h3 className="text-2xl font-bold mt-1">4 Veículos</h3>
+          <h3 className="text-2xl font-bold mt-1">{stats.scheduled} Veículos</h3>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -92,7 +117,7 @@ export default function MaintenancePage() {
             <span className="text-xs font-bold text-emerald-600">Este Mês</span>
           </div>
           <p className="text-sm text-gray-500 font-medium">Custo Total Manutenção</p>
-          <h3 className="text-2xl font-bold mt-1">{formatCurrency(1250.40)}</h3>
+          <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalCost)}</h3>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -103,7 +128,7 @@ export default function MaintenancePage() {
             <span className="text-xs font-bold text-red-600">Crítico</span>
           </div>
           <p className="text-sm text-gray-500 font-medium">Manutenção em Atraso</p>
-          <h3 className="text-2xl font-bold mt-1">2 Veículos</h3>
+          <h3 className="text-2xl font-bold mt-1">{stats.delayed} Veículos</h3>
         </div>
       </div>
 
@@ -198,9 +223,22 @@ export default function MaintenancePage() {
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
-                          <MoreVertical className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => {
+                              if (confirm('Tem a certeza que deseja eliminar este registo?')) {
+                                // deleteMaintenance(m.id);
+                                toast.success('Registo eliminado com sucesso!');
+                              }
+                            }}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                          <button className="p-2 text-gray-400 hover:text-sidebar hover:bg-gray-100 rounded-lg transition-all">
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -42,21 +42,27 @@ interface DataState {
   setCompanies: (companies: Company[]) => void;
   addCompany: (company: Company) => void;
   updateCompany: (id: string, company: Partial<Company>) => void;
+  deleteCompany: (id: string) => void;
 
   // Clients
   addClient: (client: Client) => void;
   updateClient: (id: string, updated: Partial<Client>) => void;
+  deleteClient: (id: string) => void;
 
   // Transfers
   addTransfer: (transfer: Transfer) => void;
   updateTransfer: (id: string, updated: Partial<Transfer>) => void;
+  deleteTransfer: (id: string) => void;
 
   // Deliveries
   addDelivery: (delivery: Delivery) => void;
   updateDelivery: (id: string, updated: Partial<Delivery>) => void;
+  deleteDelivery: (id: string) => void;
 
   // Fuel Logs
   addFuelLog: (log: FuelLog) => void;
+  updateFuelLog: (id: string, log: Partial<FuelLog>) => void;
+  deleteFuelLog: (id: string) => void;
   
   // Notifications
   addNotification: (notification: AppNotification) => void;
@@ -75,19 +81,23 @@ interface DataState {
   setDrivers: (drivers: Driver[]) => void;
   addDriver: (driver: Driver) => void;
   updateDriver: (id: string, driver: Partial<Driver>) => void;
+  deleteDriver: (id: string) => void;
   
   // Vehicles
   setVehicles: (vehicles: Vehicle[]) => void;
   addVehicle: (vehicle: Vehicle) => void;
   updateVehicle: (id: string, vehicle: Partial<Vehicle>) => void;
+  deleteVehicle: (id: string) => void;
   
   // Maintenance
   addMaintenance: (maintenance: Maintenance) => void;
   updateMaintenance: (id: string, maintenance: Partial<Maintenance>) => void;
+  deleteMaintenance: (id: string) => void;
   
   // Claims
   addClaim: (claim: Claim) => void;
   updateClaim: (id: string, claim: Partial<Claim>) => void;
+  deleteClaim: (id: string) => void;
   
   // Inventory
   addInventoryItem: (item: InventoryItem) => void;
@@ -99,25 +109,30 @@ interface DataState {
   // Contracts
   addContract: (contract: Contract) => void;
   updateContract: (id: string, contract: Partial<Contract>) => void;
+  deleteContract: (id: string) => void;
   
   // Affiliates
   addAffiliate: (affiliate: Affiliate) => void;
   updateAffiliate: (id: string, affiliate: Partial<Affiliate>) => void;
+  deleteAffiliate: (id: string) => void;
   
   // Expenses
   setExpenses: (expenses: Expense[]) => void;
   addExpense: (expense: Expense) => void;
   updateExpense: (id: string, expense: Partial<Expense>) => void;
+  deleteExpense: (id: string) => void;
   
   // Rentals
   setRentals: (rentals: Rental[]) => void;
   addRental: (rental: Rental) => void;
   updateRental: (id: string, rental: Partial<Rental>) => void;
+  deleteRental: (id: string) => void;
   
   // Users
   setUsers: (users: User[]) => void;
   addUser: (user: User) => void;
   updateUser: (id: string, user: Partial<User>) => void;
+  deleteUser: (id: string) => void;
   
   // Settings
   updateSettings: (settings: Partial<CompanySettings>) => void;
@@ -310,6 +325,12 @@ export const useDataStore = create<DataState>()(
           return { companies };
         });
       },
+      deleteCompany: (id) => {
+        set((state) => ({ companies: state.companies.filter(c => c.id !== id) }));
+        supabase.from('companies').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting company:', error);
+        });
+      },
 
       // Clients
       addClient: (client) => {
@@ -322,6 +343,12 @@ export const useDataStore = create<DataState>()(
           const item = clients.find(c => c.id === id);
           if (item) get().saveToSupabase('clients', item);
           return { clients };
+        });
+      },
+      deleteClient: (id) => {
+        set((state) => ({ clients: state.clients.filter(c => c.id !== id) }));
+        supabase.from('clients').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting client:', error);
         });
       },
 
@@ -338,6 +365,12 @@ export const useDataStore = create<DataState>()(
           return { transfers };
         });
       },
+      deleteTransfer: (id) => {
+        set((state) => ({ transfers: state.transfers.filter(t => t.id !== id) }));
+        supabase.from('transfers').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting transfer:', error);
+        });
+      },
 
       // Deliveries
       addDelivery: (delivery) => {
@@ -352,11 +385,31 @@ export const useDataStore = create<DataState>()(
           return { deliveries };
         });
       },
+      deleteDelivery: (id) => {
+        set((state) => ({ deliveries: state.deliveries.filter(d => d.id !== id) }));
+        supabase.from('deliveries').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting delivery:', error);
+        });
+      },
 
       // Fuel Logs
       addFuelLog: (log) => {
         set((state) => ({ fuelLogs: [log, ...state.fuelLogs] }));
         get().saveToSupabase('fuel_logs', log);
+      },
+      updateFuelLog: (id, updated) => {
+        set((state) => {
+          const fuelLogs = state.fuelLogs.map((l) => (l.id === id ? { ...l, ...updated } : l));
+          const item = fuelLogs.find(l => l.id === id);
+          if (item) get().saveToSupabase('fuel_logs', item);
+          return { fuelLogs };
+        });
+      },
+      deleteFuelLog: (id) => {
+        set((state) => ({ fuelLogs: state.fuelLogs.filter(l => l.id !== id) }));
+        supabase.from('fuel_logs').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting fuel log:', error);
+        });
       },
 
       // Supabase Sync
@@ -729,6 +782,12 @@ export const useDataStore = create<DataState>()(
           return { drivers };
         });
       },
+      deleteDriver: (id) => {
+        set((state) => ({ drivers: state.drivers.filter(d => d.id !== id) }));
+        supabase.from('drivers').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting driver:', error);
+        });
+      },
 
       // Vehicles
       setVehicles: (vehicles) => set({ vehicles }),
@@ -742,6 +801,12 @@ export const useDataStore = create<DataState>()(
           const updated = vehicles.find(v => v.id === id);
           if (updated) get().saveToSupabase('vehicles', updated);
           return { vehicles };
+        });
+      },
+      deleteVehicle: (id) => {
+        set((state) => ({ vehicles: state.vehicles.filter(v => v.id !== id) }));
+        supabase.from('vehicles').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting vehicle:', error);
         });
       },
 
@@ -773,6 +838,12 @@ export const useDataStore = create<DataState>()(
           const updated = expenses.find(e => e.id === id);
           if (updated) get().saveToSupabase('expenses', updated);
           return { expenses };
+        });
+      },
+      deleteExpense: (id) => {
+        set((state) => ({ expenses: state.expenses.filter(e => e.id !== id) }));
+        supabase.from('expenses').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting expense:', error);
         });
       },
 
@@ -811,6 +882,12 @@ export const useDataStore = create<DataState>()(
           return { rentals };
         });
       },
+      deleteRental: (id) => {
+        set((state) => ({ rentals: state.rentals.filter(r => r.id !== id) }));
+        supabase.from('rentals').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting rental:', error);
+        });
+      },
 
       // Maintenance
       addMaintenance: (maintenance) => {
@@ -825,7 +902,13 @@ export const useDataStore = create<DataState>()(
           return { maintenances };
         });
       },
-
+      deleteMaintenance: (id) => {
+        set((state) => ({ maintenances: state.maintenances.filter(m => m.id !== id) }));
+        supabase.from('maintenances').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting maintenance:', error);
+        });
+      },
+      
       // Claims
       addClaim: (claim) => {
         set((state) => ({ claims: [claim, ...state.claims] }));
@@ -857,6 +940,12 @@ export const useDataStore = create<DataState>()(
           const item = claims.find(c => c.id === id);
           if (item) get().saveToSupabase('claims', item);
           return { claims };
+        });
+      },
+      deleteClaim: (id) => {
+        set((state) => ({ claims: state.claims.filter(c => c.id !== id) }));
+        supabase.from('claims').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting claim:', error);
         });
       },
 
@@ -893,6 +982,12 @@ export const useDataStore = create<DataState>()(
           return { contracts };
         });
       },
+      deleteContract: (id) => {
+        set((state) => ({ contracts: state.contracts.filter(c => c.id !== id) }));
+        supabase.from('contracts').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting contract:', error);
+        });
+      },
 
       // Affiliates
       addAffiliate: (affiliate) => {
@@ -905,6 +1000,12 @@ export const useDataStore = create<DataState>()(
           const item = affiliates.find(a => a.id === id);
           if (item) get().saveToSupabase('affiliates', item);
           return { affiliates };
+        });
+      },
+      deleteAffiliate: (id) => {
+        set((state) => ({ affiliates: state.affiliates.filter(a => a.id !== id) }));
+        supabase.from('affiliates').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting affiliate:', error);
         });
       },
 
@@ -920,6 +1021,12 @@ export const useDataStore = create<DataState>()(
           const updated = users.find(u => u.id === id);
           if (updated) get().saveToSupabase('users', updated);
           return { users };
+        });
+      },
+      deleteUser: (id) => {
+        set((state) => ({ users: state.users.filter(u => u.id !== id) }));
+        supabase.from('users').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting user:', error);
         });
       },
 

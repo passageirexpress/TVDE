@@ -17,7 +17,8 @@ import {
   Car,
   Archive,
   History,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, formatCurrency } from '../lib/utils';
@@ -30,7 +31,7 @@ interface VehicleDetailsProps {
 }
 
 export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDetailsProps) {
-  const { uploadDocument, drivers, maintenances, inventoryItems, addInventoryItem, updateInventoryItem } = useDataStore();
+  const { uploadDocument, drivers, maintenances, inventoryItems, addInventoryItem, updateInventoryItem, deleteVehicle } = useDataStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState<string | null>(null);
   const [showAddInventory, setShowAddInventory] = useState(false);
@@ -90,6 +91,18 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
       toast.success(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
     } catch (error: any) {
       toast.error('Erro: ' + error.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirm(`Tem a certeza que deseja eliminar a viatura ${vehicle.brand} ${vehicle.model} (${vehicle.plate})? Esta ação não pode ser revertida.`)) {
+      try {
+        await deleteVehicle(vehicle.id);
+        toast.success('Viatura eliminada com sucesso!');
+        onClose();
+      } catch (error: any) {
+        toast.error('Erro ao eliminar viatura: ' + error.message);
+      }
     }
   };
 
@@ -435,6 +448,13 @@ export default function VehicleDetails({ vehicle, onClose, onUpdate }: VehicleDe
                   className="w-full py-4 bg-red-50 text-red-600 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-red-100 transition-all"
                 >
                   Imobilizar Viatura
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="w-full mt-4 py-4 bg-white border border-red-200 text-red-600 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar Permanentemente
                 </button>
               </div>
             </div>

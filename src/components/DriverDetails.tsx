@@ -14,7 +14,8 @@ import {
   Clock,
   Upload,
   Loader2,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -41,7 +42,7 @@ interface DriverDetailsProps {
 }
 
 export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetailsProps) {
-  const { uploadDocument, companies } = useDataStore();
+  const { uploadDocument, companies, deleteDriver } = useDataStore();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const company = companies.find(c => c.id === user?.company_id);
@@ -122,6 +123,18 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
       toast.success(`Documento ${newStatus === 'valid' ? 'validado' : 'rejeitado'} com sucesso!`);
     } catch (error: any) {
       toast.error('Erro: ' + error.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirm(`Tem a certeza que deseja eliminar o motorista ${driver.full_name}? Esta ação não pode ser revertida.`)) {
+      try {
+        await deleteDriver(driver.id);
+        toast.success('Motorista eliminado com sucesso!');
+        onClose();
+      } catch (error: any) {
+        toast.error('Erro ao eliminar motorista: ' + error.message);
+      }
     }
   };
 
@@ -500,6 +513,15 @@ export default function DriverDetails({ driver, onClose, onUpdate }: DriverDetai
                   className="w-full py-3 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
                 >
                   Suspender Motorista
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="w-full mt-3 py-3 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 transition-colors"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar Permanentemente
+                  </div>
                 </button>
               </div>
             </div>
