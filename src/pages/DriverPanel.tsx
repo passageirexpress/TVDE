@@ -77,8 +77,13 @@ const performanceData = [
 
 export default function DriverPanel() {
   const user = useAuthStore(state => state.user);
-  const { expenses, vehicles, drivers, payments, syncDriverEarnings, earningImports, transfers, deliveries, updateTransfer, updateDelivery } = useDataStore();
+  const { 
+    expenses, vehicles, drivers, payments, syncDriverEarnings, 
+    earningImports, transfers, deliveries, updateTransfer, 
+    updateDelivery, deliveryPoints 
+  } = useDataStore();
   const [filter, setFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'services' | 'estafeta'>('dashboard');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState(false);
@@ -348,50 +353,242 @@ export default function DriverPanel() {
         </div>
       </div>
 
-      {/* Quick Actions Grid for Mobile */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:hidden">
+      <div className="flex gap-4 border-b border-gray-100 pb-px">
         <button 
-          onClick={() => window.location.href = '/dashboard/chat'}
-          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+          onClick={() => setActiveTab('dashboard')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative",
+            activeTab === 'dashboard' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
         >
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-            <MessageSquare className="w-6 h-6" />
-          </div>
-          <span className="text-xs font-bold text-gray-600">Chat Suporte</span>
+          Dashboard
+          {activeTab === 'dashboard' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
         </button>
         <button 
-          onClick={() => window.location.href = '/dashboard/claims'}
-          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+          onClick={() => setActiveTab('services')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative",
+            activeTab === 'services' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
         >
-          <div className="p-3 bg-red-50 text-red-600 rounded-xl">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <span className="text-xs font-bold text-gray-600">Sinistros</span>
+          Meus Serviços
+          {activeTab === 'services' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
         </button>
         <button 
-          onClick={() => setShowExpenseModal(true)}
-          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+          onClick={() => setActiveTab('estafeta')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative",
+            activeTab === 'estafeta' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
         >
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-            <Receipt className="w-6 h-6" />
-          </div>
-          <span className="text-xs font-bold text-gray-600">Despesas</span>
-        </button>
-        <button 
-          onClick={() => setShowVehicleModal(true)}
-          className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
-        >
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <Car className="w-6 h-6" />
-          </div>
-          <span className="text-xs font-bold text-gray-600">Meu Carro</span>
+          Estafeta (Pontos)
+          {activeTab === 'estafeta' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
         </button>
       </div>
 
-      {/* Balance Summary Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Services/Tasks Section - Mobile First */}
-        <div className="lg:col-span-4 space-y-4">
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Quick Actions Grid for Mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:hidden">
+            <button 
+              onClick={() => window.location.href = '/dashboard/chat'}
+              className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+            >
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-gray-600">Chat Suporte</span>
+            </button>
+            <button 
+              onClick={() => window.location.href = '/dashboard/claims'}
+              className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+            >
+              <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-gray-600">Sinistros</span>
+            </button>
+            <button 
+              onClick={() => setShowExpenseModal(true)}
+              className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+            >
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                <Receipt className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-gray-600">Despesas</span>
+            </button>
+            <button 
+              onClick={() => setShowVehicleModal(true)}
+              className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center gap-2"
+            >
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                <Car className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-gray-600">Meu Carro</span>
+            </button>
+          </div>
+
+          {/* Balance Summary Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute -right-8 -top-8 w-48 h-48 bg-sidebar/5 rounded-full group-hover:scale-110 transition-transform duration-700"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 text-gray-400 mb-6">
+                  <div className="p-2 bg-gray-50 rounded-lg">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <span className="text-sm font-bold uppercase tracking-widest">Saldo Total da Conta</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-baseline gap-2">
+                  <h3 className="text-3xl sm:text-5xl font-black tracking-tighter text-gray-900">{formatCurrency(totalBalance)}</h3>
+                  <span className="w-fit text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+4.2%</span>
+                </div>
+              </div>
+              <div className="mt-8 pt-8 border-t border-gray-50 grid grid-cols-2 gap-8 relative z-10">
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Ganhos Líquidos Totais</p>
+                  <p className="text-2xl font-bold text-emerald-600">{formatCurrency(paidBalance)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pagamentos Pendentes</p>
+                  <p className="text-2xl font-bold text-amber-600">{formatCurrency(pendingBalance)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                    <TrendingUp className="w-6 h-6" />
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-600 font-bold text-xs">
+                    <ArrowUpRight className="w-3 h-3" />
+                    12%
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 font-medium">Ganhos Brutos (Hoje)</p>
+                  <h3 className="text-2xl font-bold mt-1">{formatCurrency(125.70)}</h3>
+                </div>
+              </div>
+
+              <div className="bg-sidebar p-6 rounded-[32px] shadow-xl text-white relative overflow-hidden flex flex-col justify-between">
+                <div className="absolute right-0 bottom-0 opacity-10">
+                  <Euro className="w-32 h-32 -mb-8 -mr-8" />
+                </div>
+                <div className="flex items-center justify-between mb-4 relative z-10">
+                  <div className="p-3 bg-white/10 rounded-2xl">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold text-sidebar-foreground uppercase tracking-widest">Próximo Pagamento</span>
+                </div>
+                <div className="relative z-10">
+                  <p className="text-[10px] text-sidebar-foreground font-bold uppercase tracking-widest mb-1">Período: {getUberPeriod(new Date(), 0)}</p>
+                  <p className="text-sm text-sidebar-foreground font-medium">Pagamento: Segunda-feira, 02 Mar</p>
+                  <h3 className="text-2xl font-bold mt-1">{formatCurrency(pendingBalance)}</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Daily Bar Chart */}
+            <div className="lg:col-span-2 space-y-8">
+              <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-lg font-bold">Ganhos Diários</h3>
+                    <p className="text-xs text-gray-400 mt-1">Comparativo Uber vs Bolt na semana atual</p>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Uber</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Bolt</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="day" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fontSize: 12, fill: '#9ca3af', fontWeight: 600}} 
+                        dy={10} 
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{fontSize: 12, fill: '#9ca3af'}} 
+                        tickFormatter={(value) => `€${value}`}
+                      />
+                      <Tooltip 
+                        cursor={{fill: '#f9fafb'}}
+                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value) => [formatCurrency(Number(value)), '']}
+                      />
+                      <Bar dataKey="uber" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24} />
+                      <Bar dataKey="bolt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed History */}
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-lg font-bold">Histórico de Pagamentos</h3>
+                <button className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-sidebar transition-colors">
+                  <Filter className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                {filteredHistory.map((item) => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    className={cn(
+                      "p-5 bg-gray-50 rounded-2xl border transition-all group cursor-pointer relative overflow-hidden",
+                      expandedId === item.id ? "border-sidebar/30 bg-white shadow-md" : "border-gray-100 hover:border-sidebar/20"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.period_start} - {item.period_end}</span>
+                      <span className={cn(
+                        "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
+                        item.status === 'paid' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                      )}>
+                        {item.status === 'paid' ? 'Pago' : 'Processando'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-lg font-black text-gray-900">{formatCurrency(item.net_amount)}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Líquido a Receber</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-500">{formatCurrency(item.gross_revenue)}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Total Bruto</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'services' && (
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Meus Serviços Agendados</h2>
             <span className="text-[10px] font-black bg-sidebar text-white px-2 py-1 rounded-full uppercase tracking-widest">
@@ -401,9 +598,11 @@ export default function DriverPanel() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {myServices
-              .filter(s => s.status !== 'completed' && s.status !== 'canceled')
               .map(service => (
-                <div key={service.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+                <div key={service.id} className={cn(
+                  "bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-md transition-all group",
+                  service.status === 'completed' && "opacity-60"
+                )}>
                   <div className="flex items-center justify-between mb-4">
                     <div className={cn(
                       "p-3 rounded-2xl",
@@ -414,9 +613,11 @@ export default function DriverPanel() {
                     <div className="text-right">
                       <span className={cn(
                         "text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter",
-                        service.status === 'in_progress' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                        service.status === 'in_progress' ? "bg-amber-100 text-amber-700" : 
+                        service.status === 'completed' ? "bg-emerald-100 text-emerald-700" :
+                        "bg-blue-100 text-blue-700"
                       )}>
-                        {service.status === 'in_progress' ? 'Em Curso' : 'Agendado'}
+                        {service.status === 'in_progress' ? 'Em Curso' : service.status === 'completed' ? 'Concluído' : 'Agendado'}
                       </span>
                       <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
                         {new Date(service.scheduled_at).toLocaleDateString('pt-PT')} • {new Date(service.scheduled_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
@@ -441,446 +642,79 @@ export default function DriverPanel() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {service.status === 'scheduled' ? (
+                  {service.status !== 'completed' && (
+                    <div className="flex items-center gap-2">
+                      {service.status === 'scheduled' ? (
+                        <button 
+                          onClick={() => handleUpdateServiceStatus(service, 'in_progress')}
+                          className="flex-1 bg-sidebar text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all"
+                        >
+                          <Play className="w-4 h-4" />
+                          Iniciar Serviço
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleUpdateServiceStatus(service, 'completed')}
+                          className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Concluir Serviço
+                        </button>
+                      )}
                       <button 
-                        onClick={() => handleUpdateServiceStatus(service, 'in_progress')}
-                        className="flex-1 bg-sidebar text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all"
+                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(service.dropoff_location)}`, '_blank')}
+                        className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 hover:text-gray-600 transition-all"
                       >
-                        <Play className="w-4 h-4" />
-                        Iniciar Serviço
+                        <Navigation className="w-5 h-5" />
                       </button>
-                    ) : (
-                      <button 
-                        onClick={() => handleUpdateServiceStatus(service, 'completed')}
-                        className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Concluir Serviço
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(service.dropoff_location)}`, '_blank')}
-                      className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 hover:text-gray-600 transition-all"
-                    >
-                      <Navigation className="w-5 h-5" />
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))}
-            {myServices.filter(s => s.status !== 'completed' && s.status !== 'canceled').length === 0 && (
-              <div className="col-span-full p-12 bg-white rounded-[32px] border border-dashed border-gray-200 text-center">
-                <p className="text-gray-400 font-medium italic">Nenhum serviço agendado para hoje.</p>
-              </div>
-            )}
           </div>
         </div>
+      )}
 
-        <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute -right-8 -top-8 w-48 h-48 bg-sidebar/5 rounded-full group-hover:scale-110 transition-transform duration-700"></div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 text-gray-400 mb-6">
-              <div className="p-2 bg-gray-50 rounded-lg">
-                <Wallet className="w-5 h-5" />
-              </div>
-              <span className="text-sm font-bold uppercase tracking-widest">Saldo Total da Conta</span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-2">
-              <h3 className="text-3xl sm:text-5xl font-black tracking-tighter text-gray-900">{formatCurrency(totalBalance)}</h3>
-              <span className="w-fit text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+4.2%</span>
-            </div>
+      {activeTab === 'estafeta' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Pontos de Entrega (Estafeta)</h2>
+            <p className="text-sm text-gray-500 font-medium">Locais parceiros para recolha e entrega de encomendas.</p>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-50 grid grid-cols-2 gap-8 relative z-10">
-            <div className="space-y-1">
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Ganhos Líquidos Totais</p>
-              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(paidBalance)}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pagamentos Pendentes</p>
-              <p className="text-2xl font-bold text-amber-600">{formatCurrency(pendingBalance)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div className="flex items-center gap-1 text-emerald-600 font-bold text-xs">
-                <ArrowUpRight className="w-3 h-3" />
-                12%
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Ganhos Brutos (Hoje)</p>
-              <h3 className="text-2xl font-bold mt-1">{formatCurrency(125.70)}</h3>
-            </div>
-          </div>
-
-          <div className="bg-sidebar p-6 rounded-[32px] shadow-xl text-white relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute right-0 bottom-0 opacity-10">
-              <Euro className="w-32 h-32 -mb-8 -mr-8" />
-            </div>
-            <div className="flex items-center justify-between mb-4 relative z-10">
-              <div className="p-3 bg-white/10 rounded-2xl">
-                <Clock className="w-6 h-6" />
-              </div>
-              <span className="text-[10px] font-bold text-sidebar-foreground uppercase tracking-widest">Próximo Pagamento</span>
-            </div>
-            <div className="relative z-10">
-              <p className="text-[10px] text-sidebar-foreground font-bold uppercase tracking-widest mb-1">Período: {getUberPeriod(new Date(), 0)}</p>
-              <p className="text-sm text-sidebar-foreground font-medium">Pagamento: Segunda-feira, 02 Mar</p>
-              <h3 className="text-2xl font-bold mt-1">{formatCurrency(pendingBalance)}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Daily Bar Chart */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-bold">Ganhos Diários</h3>
-                <p className="text-xs text-gray-400 mt-1">Comparativo Uber vs Bolt na semana atual</p>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Uber</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Bolt</span>
-                </div>
-              </div>
-            </div>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="day" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 12, fill: '#9ca3af', fontWeight: 600}} 
-                    dy={10} 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 12, fill: '#9ca3af'}} 
-                    tickFormatter={(value) => `€${value}`}
-                  />
-                  <Tooltip 
-                    cursor={{fill: '#f9fafb'}}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                    formatter={(value) => [formatCurrency(Number(value)), '']}
-                  />
-                  <Bar dataKey="uber" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24} />
-                  <Bar dataKey="bolt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-bold">Minhas Despesas (Lançadas pela Empresa)</h3>
-                <p className="text-xs text-gray-400 mt-1">Despesas operacionais associadas ao seu perfil</p>
-              </div>
-              <button 
-                onClick={() => toast.info('Exportando histórico de despesas...')}
-                className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-sidebar transition-colors"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              {myExpenses.map(expense => (
-                <div key={expense.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-white rounded-xl shadow-sm text-gray-400">
-                      <Receipt className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900 capitalize">{expense.category}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{expense.date} • {expense.description}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-gray-900">{formatCurrency(expense.amount)}</p>
-                    <span className="text-[9px] font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Aprovado</span>
-                  </div>
-                </div>
-              ))}
-              {myExpenses.length === 0 && (
-                <p className="text-center text-gray-400 text-sm py-4">Nenhuma despesa registada.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-bold">Meu Veículo</h3>
-                <p className="text-xs text-gray-400 mt-1">Dados e documentos da viatura atual</p>
-              </div>
-              <button 
-                onClick={() => setShowVehicleModal(true)}
-                className="bg-sidebar text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-black transition-all"
-              >
-                Atualizar Dados
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="p-3 bg-white rounded-2xl shadow-sm text-sidebar">
-                    <Car className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold">{vehicleData.brand} {vehicleData.model}</h4>
-                    <p className="text-xs text-gray-500 font-mono">{vehicleData.plate} • {vehicleData.year}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Categoria</p>
-                    <p className="text-sm font-bold">{vehicleData.category}</p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Status</p>
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase">Ativo</span>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Documentação</p>
-                {vehicleData.documents.map(doc => (
-                  <div key={doc.name} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                      <span className="text-xs font-bold text-gray-700">{doc.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 font-bold">Expira em</p>
-                      <p className="text-xs font-bold text-gray-900">{doc.expiry}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-bold">Taxas de Desempenho</h3>
-                <p className="text-xs text-gray-400 mt-1">Aceitação vs Cancelamento</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Aceitação</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">Cancelamento</span>
-                </div>
-              </div>
-            </div>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { name: 'Aceitação', value: myDriverData?.acceptance_rate || 0, fill: '#10b981' },
-                  { name: 'Cancelamento', value: myDriverData?.cancellation_rate || 0, fill: '#ef4444' }
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af', fontWeight: 600}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} domain={[0, 100]} />
-                  <Tooltip 
-                    cursor={{fill: '#f9fafb'}}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={60}>
-                    {
-                      [
-                        { name: 'Aceitação', value: myDriverData?.acceptance_rate || 0, fill: '#10b981' },
-                        { name: 'Cancelamento', value: myDriverData?.cancellation_rate || 0, fill: '#ef4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))
-                    }
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-sidebar/5 text-sidebar rounded-lg">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-bold">Dados para Faturamento</h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Empresa</p>
-                  <p className="text-sm font-bold text-gray-900">{companyData.name}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">NIF</p>
-                  <p className="text-sm font-bold text-gray-900">{companyData.nif}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Morada</p>
-                  <p className="text-sm font-medium text-gray-600 leading-relaxed">{companyData.address}</p>
-                </div>
-                <div className="pt-4 border-t border-gray-50 flex items-center gap-2 text-emerald-600">
-                  <Info className="w-4 h-4" />
-                  <span className="text-xs font-bold">Emitir Recibo Verde com IVA 6%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-lg font-bold">Enviar Recibo Verde</h3>
-                </div>
-                <p className="text-sm text-gray-500 mb-6">
-                  Carregue o seu recibo verde mensal para que possamos processar o seu pagamento.
-                </p>
-              </div>
-              <div className="space-y-4">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 hover:border-sidebar/30 transition-all">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                    <p className="text-xs text-gray-500 font-bold">Clique para carregar PDF</p>
-                  </div>
-                  <input type="file" className="hidden" accept=".pdf" onChange={() => toast.success('Recibo carregado com sucesso! Aguarde validação.')} />
-                </label>
-                <button className="w-full py-3 bg-sidebar text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20">
-                  Enviar para Empresa
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Detailed History */}
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-bold">Histórico de Pagamentos</h3>
-            <button className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:text-sidebar transition-colors">
-              <Filter className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            {filteredHistory.map((item) => (
-              <div 
-                key={item.id} 
-                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                className={cn(
-                  "p-5 bg-gray-50 rounded-2xl border transition-all group cursor-pointer relative overflow-hidden",
-                  expandedId === item.id ? "border-sidebar/30 bg-white shadow-md" : "border-gray-100 hover:border-sidebar/20"
-                )}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.period_start} - {item.period_end}</span>
-                  <span className={cn(
-                    "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border",
-                    item.status === 'paid' 
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
-                      : "bg-amber-50 text-amber-700 border-amber-100 animate-pulse"
-                  )}>
-                    {item.status === 'paid' ? 'Pago' : item.status === 'processing' ? 'Processando' : 'Pendente'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Líquido Recebido</p>
-                    <p className="text-xl font-black tracking-tight text-gray-900">{formatCurrency(item.net_amount)}</p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {deliveryPoints.map(point => (
+              <div key={point.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm group hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-4">
                   <div className={cn(
-                    "w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm transition-all",
-                    expandedId === item.id ? "bg-sidebar text-white rotate-90" : "group-hover:bg-sidebar group-hover:text-white"
+                    "p-3 rounded-2xl",
+                    point.type === 'restaurant' ? "bg-orange-50 text-orange-600" :
+                    point.type === 'commercial_center' ? "bg-purple-50 text-purple-600" :
+                    "bg-blue-50 text-blue-600"
                   )}>
-                    <ChevronRight className="w-4 h-4" />
+                    {point.type === 'restaurant' ? <Euro className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
                   </div>
-                </div>
-
-                <div className="mt-2 flex justify-end">
                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowVehicleModal(true);
-                    }}
-                    className="text-[10px] font-bold text-sidebar hover:underline flex items-center gap-1"
+                    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(point.name + ' ' + point.address)}`, '_blank')}
+                    className="p-2 text-gray-400 hover:text-sidebar transition-colors"
                   >
-                    <Car className="w-3 h-3" />
-                    Ver Veículo
+                    <MapPin className="w-4 h-4" />
                   </button>
                 </div>
-
-                {expandedId === item.id && (
-                  <div className="mt-5 pt-5 border-t border-gray-100 space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-1 gap-6">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-sidebar rounded-full"></div>
-                          <p className="text-[10px] text-gray-400 uppercase font-bold">Detalhamento Semanal</p>
-                        </div>
-                        <div className="pl-4">
-                          <p className="text-sm font-bold">Bruto: {formatCurrency(item.gross_revenue)}</p>
-                          <p className="text-[10px] text-red-500 font-medium">Comissão Empresa (25%): -{formatCurrency(item.commission_fee)}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-xl space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-gray-500">Total Bruto</span>
-                        <span className="text-sm font-black">{formatCurrency(item.gross_revenue)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-red-500">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">Comissão</span>
-                        <span className="text-xs font-bold">-{formatCurrency(item.commission_fee)}</span>
-                      </div>
-                      {myExpenses.length > 0 && (
-                        <div className="pt-2 border-t border-gray-200 space-y-1">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase">Despesas Deduzidas</p>
-                          {myExpenses.map(e => (
-                            <div key={e.id} className="flex justify-between items-center text-red-500">
-                              <span className="text-[10px] text-gray-500 capitalize">{e.category}</span>
-                              <span className="text-xs">-{formatCurrency(e.amount)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <h3 className="text-lg font-black text-gray-900">{point.name}</h3>
+                <p className="text-sm text-gray-500 font-medium mt-1">{point.address}</p>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-gray-100 px-2 py-1 rounded-lg">
+                    {point.type.replace('_', ' ')}
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-gray-100 px-2 py-1 rounded-lg">
+                    {point.city}
+                  </span>
+                </div>
               </div>
             ))}
-            {filteredHistory.length === 0 && (
-              <div className="py-12 text-center">
-                <p className="text-gray-400 text-sm italic">Nenhum pagamento encontrado para este período.</p>
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
         <h3 className="text-lg font-bold mb-6">Calendário de Pagamentos TVDE (Semanal)</h3>

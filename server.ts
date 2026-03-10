@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import crypto from "crypto";
 
 dotenv.config();
@@ -65,7 +66,7 @@ async function getVivaAccessToken() {
   }
 }
 
-// Resend Email Integration
+// Email Integration
 let resendClient: Resend | null = null;
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'TVDE Fleet <onboarding@resend.dev>';
 
@@ -77,6 +78,43 @@ function getResendClient() {
     }
   }
   return resendClient;
+}
+
+// Nodemailer Transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.EMAIL_PORT || '587'),
+  secure: process.env.EMAIL_PORT === '465',
+  auth: {
+    user: process.env.EMAIL_USERNAME,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+async function sendEmail({ to, subject, html }: { to: string, subject: string, html: string }) {
+  const useSMTP = process.env.EMAIL_HOST && process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD;
+  
+  if (useSMTP) {
+    console.log(`[EMAIL] Enviando via SMTP (${process.env.EMAIL_HOST}) para: ${to}`);
+    return transporter.sendMail({
+      from: process.env.EMAIL_USERNAME,
+      to,
+      subject,
+      html,
+    });
+  } else {
+    const resend = getResendClient();
+    if (resend) {
+      console.log(`[EMAIL] Enviando via Resend para: ${to}`);
+      return resend.emails.send({
+        from: RESEND_FROM_EMAIL,
+        to: [to],
+        subject,
+        html,
+      });
+    }
+    throw new Error("Serviço de email não configurado (SMTP ou Resend).");
+  }
 }
 
 async function startServer() {
@@ -125,11 +163,10 @@ async function startServer() {
         </div>
       `;
 
-      const data = await resend.emails.send({
-        from: RESEND_FROM_EMAIL,
-        to: [to],
-        subject: subject,
-        html: htmlContent,
+      const data = await sendEmail({
+        to,
+        subject,
+        html: htmlContent
       });
 
       res.json({ success: true, data });
@@ -207,12 +244,11 @@ async function startServer() {
         </div>
       `;
 
-      const { data, error } = await resend.emails.send({
-        from: RESEND_FROM_EMAIL,
-        to: [to],
+      const { data, error } = await sendEmail({
+        to,
         subject: `Fatura #${invoiceNumber} - ${companyName}`,
-        html: htmlContent,
-      });
+        html: htmlContent
+      }) as any;
 
       if (error) {
         return res.status(400).json({ error });
@@ -429,17 +465,11 @@ async function startServer() {
       const token = authHeader.replace('Bearer ', '');
       const { data: { user } } = await supabaseAdmin.auth.getUser(token);
       if (!user) return res.status(401).json({ error: "Sessão inválida" });
-      const resend = new Resend(resendKey);
-      const { data, error } = await resend.emails.send({
-        from: RESEND_FROM_EMAIL,
-        to: [user.email || 'passageiroexpress@gmail.com'],
+      const data = await sendEmail({
+        to: user.email || 'passageiroexpress@gmail.com',
         subject: 'Teste de Email - TVDE Fleet',
         html: '<p>Este é um email de teste enviado com sucesso!</p>'
       });
-
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
 
       res.json({ success: true, data });
     } catch (error: any) {
@@ -643,29 +673,25 @@ async function startServer() {
       // console.log(`[REGISTER] Registro completo para ${admin_email}`);
 
       // 4. Send Welcome Email
-      const resend = getResendClient();
-      if (resend) {
-        try {
-          await resend.emails.send({
-            from: RESEND_FROM_EMAIL,
-            to: [admin_email],
-            subject: 'Bem-vindo à TVDE Fleet CRM',
-            html: `
-              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #1a1a1a;">Bem-vindo, ${admin_name}!</h1>
-                <p>A sua conta de administrador para a empresa <strong>${company_name}</strong> foi criada com sucesso.</p>
-                <p>Agora pode começar a gerir a sua frota, motoristas e veículos de forma eficiente.</p>
-                <div style="margin: 30px 0;">
-                  <a href="${process.env.APP_URL || 'https://tvdefleet.com'}/login" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Aceder ao Painel</a>
-                </div>
-                <p style="color: #666; font-size: 14px;">Se tiver alguma dúvida, responda a este email.</p>
+      try {
+        await sendEmail({
+          to: admin_email,
+          subject: 'Bem-vindo à TVDE Fleet CRM',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #1a1a1a;">Bem-vindo, ${admin_name}!</h1>
+              <p>A sua conta de administrador para a empresa <strong>${company_name}</strong> foi criada com sucesso.</p>
+              <p>Agora pode começar a gerir a sua frota, motoristas e veículos de forma eficiente.</p>
+              <div style="margin: 30px 0;">
+                <a href="${process.env.APP_URL || 'https://tvdefleet.com'}/login" style="background-color: #1a1a1a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Aceder ao Painel</a>
               </div>
-            `
-          });
-          console.log(`[REGISTER] Email de boas-vindas enviado para ${admin_email}`);
-        } catch (emailError) {
-          console.error("[REGISTER EMAIL ERROR]", emailError);
-        }
+              <p style="color: #666; font-size: 14px;">Se tiver alguma dúvida, responda a este email.</p>
+            </div>
+          `
+        });
+        console.log(`[REGISTER] Email de boas-vindas enviado para ${admin_email}`);
+      } catch (emailError) {
+        console.error("[REGISTER EMAIL ERROR]", emailError);
       }
 
       // 5. Handle Viva Wallet Payment if plan is not free
@@ -1008,7 +1034,12 @@ async function startServer() {
   // API to update company settings (Uber/Bolt credentials)
   app.post("/api/settings/update", async (req, res) => {
     const authHeader = req.headers.authorization;
-    const { bolt_client_id, bolt_client_secret, uber_client_id, uber_client_secret, logo_url, primary_color } = req.body;
+    const { 
+      bolt_client_id, bolt_client_secret, uber_client_id, uber_client_secret, 
+      logo_url, primary_color,
+      transfer_price_per_km, transfer_price_per_min, vat_rate,
+      delivery_base_price, delivery_price_per_km
+    } = req.body;
 
     if (!supabaseAdmin) {
       return res.status(500).json({ error: "Supabase não configurado." });
@@ -1048,6 +1079,11 @@ async function startServer() {
         uber_client_id,
         logo_url,
         primary_color,
+        transfer_price_per_km,
+        transfer_price_per_min,
+        vat_rate,
+        delivery_base_price,
+        delivery_price_per_km,
         updated_at: new Date().toISOString()
       };
 

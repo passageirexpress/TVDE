@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Bell, User, Search, Menu, X, CheckCircle2, Clock, Globe } from 'lucide-react';
+import { Bell, User, Search, Menu, X, CheckCircle2, Clock, Globe, Moon, Sun } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export default function Layout() {
+  const { t, i18n } = useTranslation();
   const user = useAuthStore(state => state.user);
-  const { notifications, markNotificationsAsRead, settings } = useDataStore();
+  const { notifications, markNotificationsAsRead, settings, darkMode, toggleDarkMode, language, setLanguage } = useDataStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
@@ -21,14 +23,18 @@ export default function Layout() {
   }, [settings?.primary_color]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const [currentLang, setCurrentLang] = useState('PT');
+
+  const handleLanguageChange = (lang: string) => {
+    setLanguage(lang);
+    i18n.changeLanguage(lang.toLowerCase());
+  };
 
   return (
-    <div className="flex min-h-screen bg-[#F5F5F5]">
+    <div className="flex min-h-screen bg-primary text-primary transition-colors duration-300">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <main className="flex-1 lg:ml-64 transition-all duration-300">
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40">
+        <header className="h-16 bg-card/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -48,15 +54,24 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-3 lg:gap-6">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-all group">
+            <button 
+              onClick={toggleDarkMode}
+              className="p-2 text-gray-400 hover:text-sidebar transition-colors"
+              title={darkMode ? t('light_mode') : t('dark_mode')}
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-100 transition-all group">
               <Globe className="w-4 h-4 text-gray-400 group-hover:text-sidebar" />
               <select 
                 className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest cursor-pointer"
-                value={currentLang}
-                onChange={(e) => setCurrentLang(e.target.value)}
+                value={language.toUpperCase()}
+                onChange={(e) => handleLanguageChange(e.target.value)}
               >
                 <option value="PT">PT</option>
                 <option value="EN">EN</option>
+                <option value="ES">ES</option>
                 <option value="FR">FR</option>
               </select>
             </div>

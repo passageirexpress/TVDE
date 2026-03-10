@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
-import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog, AuditLog } from '../types';
+import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog, AuditLog, DeliveryPoint } from '../types';
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
@@ -29,7 +29,14 @@ interface DataState {
   affiliates: Affiliate[];
   settings: CompanySettings;
   auditLogs: AuditLog[];
+  deliveryPoints: DeliveryPoint[];
   isLoading: boolean;
+  darkMode: boolean;
+  language: string;
+  
+  // Theme & Language
+  toggleDarkMode: () => void;
+  setLanguage: (lang: string) => void;
   
   // Companies
   setCompanies: (companies: Company[]) => void;
@@ -117,6 +124,12 @@ interface DataState {
   
   // Audit Logs
   addAuditLog: (log: Omit<AuditLog, 'id' | 'timestamp' | 'company_id'>) => Promise<void>;
+  
+  // Delivery Points
+  setDeliveryPoints: (points: DeliveryPoint[]) => void;
+  addDeliveryPoint: (point: DeliveryPoint) => void;
+  updateDeliveryPoint: (id: string, point: Partial<DeliveryPoint>) => void;
+  deleteDeliveryPoint: (id: string) => void;
   
   // Global Actions
   rehydrateData: () => void;
@@ -263,7 +276,14 @@ export const useDataStore = create<DataState>()(
       affiliates: [],
       auditLogs: [],
       settings: initialSettings,
+      deliveryPoints: [],
       isLoading: false,
+      darkMode: false,
+      language: 'pt',
+
+      // Theme & Language
+      toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+      setLanguage: (lang) => set({ language: lang }),
 
       // Companies
       setCompanies: (companies) => set({ 
@@ -369,6 +389,7 @@ export const useDataStore = create<DataState>()(
           let fuelLogsQuery = supabase.from('fuel_logs').select('*');
           let affiliatesQuery = supabase.from('affiliates').select('*');
           let auditLogsQuery = supabase.from('audit_logs').select('*');
+          let deliveryPointsQuery = supabase.from('delivery_points').select('*');
 
           if (!isMaster && companyId) {
             driversQuery = driversQuery.eq('company_id', companyId);
@@ -389,6 +410,7 @@ export const useDataStore = create<DataState>()(
             deliveriesQuery = deliveriesQuery.eq('company_id', companyId);
             fuelLogsQuery = fuelLogsQuery.eq('company_id', companyId);
             affiliatesQuery = affiliatesQuery.eq('company_id', companyId);
+            deliveryPointsQuery = deliveryPointsQuery.or(`company_id.eq.${companyId},company_id.is.null`);
             // Managers don't see other companies
           }
 
@@ -405,8 +427,9 @@ export const useDataStore = create<DataState>()(
             contractsQuery, clientsQuery, transfersQuery, deliveriesQuery, fuelLogsQuery, affiliatesQuery
           ]);
 
-          const [auditLogs] = await Promise.all([
-            auditLogsQuery
+          const [auditLogs, deliveryPoints] = await Promise.all([
+            auditLogsQuery,
+            deliveryPointsQuery
           ]);
 
           if (drivers.data) set({ drivers: drivers.data });
@@ -429,6 +452,7 @@ export const useDataStore = create<DataState>()(
           if (fuelLogs.data) set({ fuelLogs: fuelLogs.data });
           if (affiliates.data) set({ affiliates: affiliates.data });
           if (auditLogs.data) set({ auditLogs: auditLogs.data });
+          if (deliveryPoints.data) set({ deliveryPoints: deliveryPoints.data });
         } catch (error) {
           console.error('Error fetching from Supabase:', error);
         } finally {
@@ -923,6 +947,27 @@ export const useDataStore = create<DataState>()(
 
         set((state) => ({ auditLogs: [newLog, ...state.auditLogs] }));
         await get().saveToSupabase('audit_logs', newLog);
+      },
+
+      // Delivery Points
+      setDeliveryPoints: (points) => set({ deliveryPoints: points }),
+      addDeliveryPoint: (point) => {
+        set((state) => ({ deliveryPoints: [point, ...state.deliveryPoints] }));
+        get().saveToSupabase('delivery_points', point);
+      },
+      updateDeliveryPoint: (id, point) => {
+        set((state) => {
+          const deliveryPoints = state.deliveryPoints.map((p) => p.id === id ? { ...p, ...point } : p);
+          const item = deliveryPoints.find(p => p.id === id);
+          if (item) get().saveToSupabase('delivery_points', item);
+          return { deliveryPoints };
+        });
+      },
+      deleteDeliveryPoint: (id) => {
+        set((state) => ({ deliveryPoints: state.deliveryPoints.filter((p) => p.id !== id) }));
+        supabase.from('delivery_points').delete().eq('id', id).then(({ error }) => {
+          if (error) toast.error('Erro ao eliminar ponto de entrega');
+        });
       },
 
       // Global Actions

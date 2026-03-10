@@ -1,0 +1,14 @@
+{
+  "welcome": "Welcome",
+  "login": "Login",
+  "register": "Register",
+  "dashboard": "Dashboard",
+  "drivers": "Drivers",
+  "vehicles": "Vehicles",
+  "finance": "Finance",
+  "settings": "Settings",
+  "logout": "Logout",
+  "dark_mode": "Dark Mode",
+  "light_mode": "Light Mode",
+  "language": "Language"
+}

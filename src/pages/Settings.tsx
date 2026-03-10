@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap, Palette, Image as ImageIcon } from 'lucide-react';
+import { Building2, Save, Mail, MapPin, CreditCard, Hash, Zap, Palette, Image as ImageIcon, Euro } from 'lucide-react';
 import { toast } from 'sonner';
 import { CompanySettings } from '../types';
 import { useDataStore } from '../store/useDataStore';
@@ -34,7 +34,14 @@ export default function Settings() {
           bolt_client_id: settings.bolt_client_id,
           bolt_client_secret: settings.bolt_client_secret,
           uber_client_id: settings.uber_client_id,
-          uber_client_secret: settings.uber_client_secret
+          uber_client_secret: settings.uber_client_secret,
+          logo_url: settings.logo_url,
+          primary_color: settings.primary_color,
+          transfer_price_per_km: settings.transfer_price_per_km,
+          transfer_price_per_min: settings.transfer_price_per_min,
+          vat_rate: settings.vat_rate,
+          delivery_base_price: settings.delivery_base_price,
+          delivery_price_per_km: settings.delivery_price_per_km
         })
       });
 
@@ -131,6 +138,81 @@ export default function Settings() {
                 onChange={e => setSettings({...settings, iban: e.target.value})}
                 required
               />
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-gray-100">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                <Euro className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Tabela de Preços (Transfers & Logística)</h3>
+                <p className="text-sm text-gray-400">Configure os valores base para cálculo automático de orçamentos.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  Preço por KM (€)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.transfer_price_per_km || 0}
+                  onChange={e => setSettings({...settings, transfer_price_per_km: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  Preço por Minuto (€)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.transfer_price_per_min || 0}
+                  onChange={e => setSettings({...settings, transfer_price_per_min: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  Taxa de IVA (%)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.vat_rate || 23}
+                  onChange={e => setSettings({...settings, vat_rate: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  Base Entrega (€)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.delivery_base_price || 0}
+                  onChange={e => setSettings({...settings, delivery_base_price: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2">
+                  Entrega por KM (€)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10"
+                  value={settings.delivery_price_per_km || 0}
+                  onChange={e => setSettings({...settings, delivery_price_per_km: parseFloat(e.target.value)})}
+                />
+              </div>
             </div>
           </div>
 

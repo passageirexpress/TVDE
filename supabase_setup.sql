@@ -108,6 +108,11 @@ CREATE TABLE IF NOT EXISTS settings (
   uber_client_secret TEXT,
   logo_url TEXT,
   primary_color TEXT DEFAULT '#151619',
+  transfer_price_per_km DECIMAL(10,2) DEFAULT 1.20,
+  transfer_price_per_min DECIMAL(10,2) DEFAULT 0.30,
+  vat_rate DECIMAL(5,2) DEFAULT 23.00,
+  delivery_base_price DECIMAL(10,2) DEFAULT 5.00,
+  delivery_price_per_km DECIMAL(10,2) DEFAULT 0.80,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -252,12 +257,39 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 17. Habilitar RLS (Row Level Security) para todas as tabelas
+-- 17. Tabela de Clientes (Clients)
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  nif TEXT,
+  email TEXT,
+  phone TEXT,
+  address TEXT,
+  type TEXT DEFAULT 'individual', -- hotel, agency, restaurant, individual, corporate
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 18. Tabela de Pontos de Entrega (Delivery Points)
+CREATE TABLE IF NOT EXISTS delivery_points (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE, -- Se null, é um ponto global
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  type TEXT DEFAULT 'restaurant', -- restaurant, commercial_center, supermarket, other
+  city TEXT NOT NULL,
+  postal_code TEXT,
+  lat DECIMAL(10,8),
+  lng DECIMAL(11,8),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 19. Habilitar RLS (Row Level Security) para todas as tabelas
 -- Ignorar erros se já estiver habilitado
 DO $$ 
 DECLARE 
     t TEXT;
-    tables TEXT[] := ARRAY['companies', 'users', 'drivers', 'vehicles', 'settings', 'payments', 'expenses', 'rentals', 'audit_logs', 'transfers', 'deliveries', 'maintenances', 'claims', 'fuel_logs', 'notifications'];
+    tables TEXT[] := ARRAY['companies', 'users', 'drivers', 'vehicles', 'settings', 'payments', 'expenses', 'rentals', 'audit_logs', 'transfers', 'deliveries', 'maintenances', 'claims', 'fuel_logs', 'notifications', 'clients', 'delivery_points'];
 BEGIN
     FOR t IN SELECT unnest(tables) LOOP
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

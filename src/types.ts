@@ -175,6 +175,11 @@ export interface CompanySettings {
   uber_client_secret?: string;
   logo_url?: string;
   primary_color?: string;
+  transfer_price_per_km?: number;
+  transfer_price_per_min?: number;
+  vat_rate?: number;
+  delivery_base_price?: number;
+  delivery_price_per_km?: number;
 }
 
 export interface AuditLog {
@@ -333,4 +338,16 @@ export interface Affiliate {
   status: 'pending' | 'active' | 'paid';
   commission_amount: number;
   created_at: string;
+}
+
+export interface DeliveryPoint {
+  id: string;
+  company_id?: string; // If null, it's a global point
+  name: string;
+  address: string;
+  type: 'restaurant' | 'commercial_center' | 'supermarket' | 'other';
+  city: string;
+  postal_code?: string;
+  lat?: number;
+  lng?: number;
 }

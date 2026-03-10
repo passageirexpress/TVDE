@@ -13,20 +13,47 @@
 }
 
 @layer base {
+  :root {
+    --bg-primary: #F5F5F5;
+    --text-primary: #1A1A1A;
+    --card-bg: #FFFFFF;
+    --border-color: #E5E7EB;
+  }
+
+  .dark {
+    --bg-primary: #0A0A0A;
+    --text-primary: #F9FAFB;
+    --card-bg: #151619;
+    --border-color: #262626;
+  }
+
   body {
-    @apply font-sans bg-[#F5F5F5] text-[#1A1A1A] antialiased;
+    @apply font-sans antialiased;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 }
 
 .glass-card {
-  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
+  background-color: var(--card-bg);
+  @apply backdrop-blur-md border border-white/20 shadow-sm;
 }
 
 .data-grid-header {
-  @apply text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-3 px-4 border-b border-gray-100;
+  @apply text-[11px] font-semibold uppercase tracking-wider text-gray-400 py-3 px-4;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .data-grid-row {
-  @apply hover:bg-gray-50 transition-colors border-b border-gray-50;
+  @apply transition-colors;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-grid-row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .data-grid-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 

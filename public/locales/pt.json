@@ -1,0 +1,14 @@
+{
+  "welcome": "Bem-vindo",
+  "login": "Entrar",
+  "register": "Registar",
+  "dashboard": "Painel",
+  "drivers": "Motoristas",
+  "vehicles": "Veículos",
+  "finance": "Finanças",
+  "settings": "Configurações",
+  "logout": "Sair",
+  "dark_mode": "Modo Escuro",
+  "light_mode": "Modo Claro",
+  "language": "Idioma"
+}

@@ -82,8 +82,16 @@ export default function App() {
   const setUser = useAuthStore(state => state.setUser);
   const setLoading = useAuthStore(state => state.setLoading);
   const initializeAuth = useAuthStore(state => state.initialize);
-  const { drivers, vehicles, rentals, addNotification, notifications, rehydrateData, subscribeToRealtime } = useDataStore();
+  const { drivers, vehicles, rentals, addNotification, notifications, rehydrateData, subscribeToRealtime, darkMode, language } = useDataStore();
   const hasCheckedExpirations = useRef(false);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   useEffect(() => {
     initializeAuth();
