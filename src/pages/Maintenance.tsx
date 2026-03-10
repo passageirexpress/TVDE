@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Wrench, 
   Plus, 
@@ -35,7 +35,7 @@ export default function MaintenancePage() {
 
     const scheduled = maintenances.filter(m => {
       const mDate = new Date(m.date);
-      return m.status === 'scheduled' && mDate >= today && mDate <= next30Days;
+      return m.status === 'pending' && mDate >= today && mDate <= next30Days;
     }).length;
 
     const currentMonth = today.getMonth();
@@ -47,7 +47,7 @@ export default function MaintenancePage() {
 
     const delayed = maintenances.filter(m => {
       const mDate = new Date(m.date);
-      return m.status === 'scheduled' && mDate < today;
+      return m.status === 'pending' && mDate < today;
     }).length;
 
     return { scheduled, totalCost, delayed };

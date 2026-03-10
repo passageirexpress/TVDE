@@ -21,7 +21,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 import { Transfer, Delivery, DeliveryPoint } from '../types';
 import { fetchFlightStatus } from '../services/flightService';
-import GooglePlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-google-places-autocomplete';
+
 import { useTranslation } from 'react-i18next';
 
 export default function Services() {
@@ -38,9 +38,6 @@ export default function Services() {
   const [filterType, setFilterType] = useState<'all' | 'transfer' | 'delivery'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingFlight, setLoadingFlight] = useState<string | null>(null);
-
-  const [pickupAddress, setPickupAddress] = useState<any>(null);
-  const [dropoffAddress, setDropoffAddress] = useState<any>(null);
 
   const checkFlight = async (flightNumber: string, transferId: string) => {
     setLoadingFlight(transferId);
@@ -79,10 +76,10 @@ export default function Services() {
   });
 
   useEffect(() => {
-    if (pickupAddress && dropoffAddress) {
+    if (formData.pickup_location && formData.dropoff_location) {
       calculatePrice();
     }
-  }, [pickupAddress, dropoffAddress]);
+  }, [formData.pickup_location, formData.dropoff_location]);
 
   const calculatePrice = async () => {
     // In a real app, we would use Google Distance Matrix API here
@@ -106,15 +103,13 @@ export default function Services() {
     const vatAmount = basePrice * (vatRate / 100);
     const totalPrice = basePrice + vatAmount;
 
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       distance_km: simulatedDistance,
       estimated_duration_min: simulatedDuration,
       price: Number(totalPrice.toFixed(2)),
       vat_amount: Number(vatAmount.toFixed(2)),
-      base_price: Number(basePrice.toFixed(2)),
-      pickup_location: pickupAddress?.label || '',
-      dropoff_location: dropoffAddress?.label || ''
+      base_price: Number(basePrice.toFixed(2))
     }));
   };
 
@@ -536,26 +531,22 @@ export default function Services() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Recolha (Pickup)</label>
-                  <GooglePlacesAutocomplete
-                    apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                    selectProps={{
-                      value: pickupAddress,
-                      onChange: setPickupAddress,
-                      placeholder: 'Pesquisar local de recolha...',
-                      className: 'google-autocomplete-container'
-                    }}
+                  <input 
+                    type="text"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                    placeholder="Pesquisar local de recolha..."
+                    value={formData.pickup_location}
+                    onChange={e => setFormData({...formData, pickup_location: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Destino (Dropoff)</label>
-                  <GooglePlacesAutocomplete
-                    apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                    selectProps={{
-                      value: dropoffAddress,
-                      onChange: setDropoffAddress,
-                      placeholder: 'Pesquisar destino...',
-                      className: 'google-autocomplete-container'
-                    }}
+                  <input 
+                    type="text"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-sidebar/10 outline-none font-medium"
+                    placeholder="Pesquisar destino..."
+                    value={formData.dropoff_location}
+                    onChange={e => setFormData({...formData, dropoff_location: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
