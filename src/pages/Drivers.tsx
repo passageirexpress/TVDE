@@ -270,6 +270,14 @@ export default function Drivers() {
     );
   };
 
+  const handleAddDriverClick = () => {
+    if (currentCompany?.plan === 'free' && drivers.length >= 3) {
+      toast.error('Limite de motoristas atingido no plano Free. Faça upgrade para adicionar mais.');
+      return;
+    }
+    setShowAddModal(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -286,7 +294,7 @@ export default function Drivers() {
             Exportar CSV
           </button>
           <button 
-            onClick={() => setShowAddModal(true)}
+            onClick={handleAddDriverClick}
             className="bg-sidebar text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-black/10 text-sm sm:text-base"
           >
             <Plus className="w-4 h-4 sm:w-5 h-5" />

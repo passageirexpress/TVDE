@@ -42,13 +42,26 @@ import Chat from './pages/Chat';
 import Affiliates from './pages/Affiliates';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+import PassengerApp from './pages/PassengerApp';
+import Ranking from './pages/Ranking';
+import Penalties from './pages/Penalties';
 import { useAuthStore } from './store/useAuthStore';
 import { useDataStore } from './store/useDataStore';
-import { checkDocumentExpirations, checkRentalExpirations } from './services/notificationService';
+import { checkDocumentExpirations, checkRentalExpirations, checkMaintenanceAlerts } from './services/notificationService';
+import i18n from './i18n';
 
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
+const ProtectedRoute = ({ 
+  children, 
+  allowedRoles, 
+  minPlan 
+}: { 
+  children: React.ReactNode, 
+  allowedRoles?: string[], 
+  minPlan?: 'free' | 'pro' | 'enterprise' 
+}) => {
   const user = useAuthStore(state => state.user);
   const loading = useAuthStore(state => state.loading);
+  const { companies } = useDataStore();
 
   if (loading) {
     return (
@@ -62,8 +75,25 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && user.role !== 'master' && !allowedRoles.includes(user.role)) {
+  // Master role bypasses all checks
+  if (user.role === 'master') {
+    return <>{children}</>;
+  }
+
+  // Role check
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
+  }
+
+  // Plan check
+  if (minPlan) {
+    const userCompany = companies.find(c => c.id === user.company_id);
+    const userPlan = userCompany?.plan || 'free';
+    const planOrder = { 'free': 0, 'pro': 1, 'enterprise': 2 };
+    
+    if (planOrder[userPlan] < planOrder[minPlan]) {
+      return <Navigate to="/dashboard/subscription" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -72,7 +102,10 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
 const HomeRedirect = () => {
   const user = useAuthStore(state => state.user);
   if (user?.role === 'driver') {
-    return <Navigate to="/driver-panel" replace />;
+    return <Navigate to="/dashboard/driver-panel" replace />;
+  }
+  if (user?.role === 'passenger') {
+    return <Navigate to="/passenger" replace />;
   }
   return <Dashboard />;
 };
@@ -99,6 +132,12 @@ export default function App() {
   }, [initializeAuth, rehydrateData]);
 
   useEffect(() => {
+    if (language) {
+      i18n.changeLanguage(language.toLowerCase());
+    }
+  }, [language]);
+
+  useEffect(() => {
     if (user) {
       const unsubscribe = subscribeToRealtime();
       return () => unsubscribe();
@@ -115,6 +154,7 @@ export default function App() {
       if (!hasCheckedExpirations.current) {
         checkDocumentExpirations(drivers, vehicles, addNotification, notifications);
         checkRentalExpirations(rentals, vehicles, drivers, addNotification, notifications);
+        checkMaintenanceAlerts(vehicles, addNotification, notifications);
         hasCheckedExpirations.current = true;
       }
     }, 1000);
@@ -132,6 +172,12 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         
+        <Route path="/passenger" element={
+          <ProtectedRoute allowedRoles={['passenger']}>
+            <PassengerApp />
+          </ProtectedRoute>
+        } />
+        
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <Layout />
@@ -139,22 +185,22 @@ export default function App() {
         }>
           <Route index element={<HomeRedirect />} />
           <Route path="performance" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Performance />
             </ProtectedRoute>
           } />
           <Route path="fleet" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Fleet />
             </ProtectedRoute>
           } />
           <Route path="fleet-map" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <FleetMap />
             </ProtectedRoute>
           } />
           <Route path="drivers" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Drivers />
             </ProtectedRoute>
           } />
@@ -164,33 +210,35 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="maintenance" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Maintenance />
             </ProtectedRoute>
           } />
           <Route path="contracts" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Contracts />
             </ProtectedRoute>
           } />
           <Route path="claims" element={<Claims />} />
+          <Route path="penalties" element={<Penalties />} />
+          <Route path="ranking" element={<Ranking />} />
           <Route path="services" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Services />
             </ProtectedRoute>
           } />
           <Route path="clients" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="pro">
               <Clients />
             </ProtectedRoute>
           } />
           <Route path="fuel-logs" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance', 'driver']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance', 'driver']} minPlan="pro">
               <FuelLogs />
             </ProtectedRoute>
           } />
           <Route path="audit-logs" element={
-            <ProtectedRoute allowedRoles={['admin', 'master']}>
+            <ProtectedRoute allowedRoles={['admin', 'master']} minPlan="enterprise">
               <AuditLogs />
             </ProtectedRoute>
           } />
@@ -202,7 +250,7 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="finance" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="enterprise">
               <Finance />
             </ProtectedRoute>
           } />
@@ -212,17 +260,17 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="reports" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="enterprise">
               <Reports />
             </ProtectedRoute>
           } />
           <Route path="users" element={
-            <ProtectedRoute allowedRoles={['admin', 'master']}>
+            <ProtectedRoute allowedRoles={['admin', 'master']} minPlan="pro">
               <Users />
             </ProtectedRoute>
           } />
           <Route path="reports" element={
-            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']}>
+            <ProtectedRoute allowedRoles={['admin', 'manager', 'finance']} minPlan="enterprise">
               <Reports />
             </ProtectedRoute>
           } />

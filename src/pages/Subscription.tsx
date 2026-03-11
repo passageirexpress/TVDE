@@ -10,9 +10,11 @@ import {
   Building2,
   ExternalLink,
   X,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 import { cn } from '../lib/utils';
@@ -21,6 +23,7 @@ import { Company } from '../types';
 import VivaPaymentForm from '../components/VivaPaymentForm';
 
 export default function Subscription() {
+  const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +43,16 @@ export default function Subscription() {
       .eq('id', user.company_id)
       .single();
     
-    if (data) setCompany(data);
+    if (data) {
+      setCompany(data);
+      // Update global store
+      const { companies, setCompanies } = useDataStore.getState();
+      const updatedCompanies = companies.map(c => c.id === data.id ? data : c);
+      if (!companies.find(c => c.id === data.id)) {
+        updatedCompanies.push(data);
+      }
+      setCompanies(updatedCompanies);
+    }
     setLoading(false);
   };
 
@@ -53,30 +65,47 @@ export default function Subscription() {
       id: 'free',
       name: 'Free',
       price: '0',
-      description: 'Ideal para frotas individuais ou em início.',
-      features: ['Até 2 viaturas', 'Gestão de motoristas básica', 'Relatórios semanais', 'Suporte via email'],
+      description: t('free_plan_desc'),
+      features: [
+        t('feature_up_to_2_vehicles'),
+        t('feature_basic_driver_mgmt'),
+        t('feature_weekly_reports'),
+        t('feature_email_support')
+      ],
       color: 'bg-slate-100 text-slate-600'
     },
     {
       id: 'pro',
       name: 'Pro',
       price: '49',
-      description: 'O padrão para frotas em crescimento.',
-      features: ['Viaturas ilimitadas', 'Sincronização Bolt/Uber API', 'Gestão de documentos avançada', 'Alertas de manutenção', 'Suporte prioritário'],
+      description: t('pro_plan_desc'),
+      features: [
+        t('feature_unlimited_vehicles'),
+        t('feature_api_sync'),
+        t('feature_adv_doc_mgmt'),
+        t('feature_maint_alerts'),
+        t('feature_priority_support')
+      ],
       color: 'bg-sidebar/10 text-sidebar'
     },
     {
       id: 'enterprise',
       name: 'Enterprise',
       price: '99',
-      description: 'Para grandes operações multi-empresa.',
-      features: ['Múltiplas empresas (Multi-tenant)', 'API de exportação personalizada', 'Gestor de conta dedicado', 'Formação de equipa', 'SLA de 99.9%'],
+      description: t('enterprise_plan_desc'),
+      features: [
+        t('feature_multi_tenant'),
+        t('feature_custom_export'),
+        t('feature_dedicated_manager'),
+        t('feature_team_training'),
+        t('feature_sla')
+      ],
       color: 'bg-indigo-50 text-indigo-600'
     }
   ];
 
   const handleUpgrade = async (planId: string, amount: string) => {
-    if (!user) return;
+    if (!user || !user.company_id) return;
     
     setIsProcessing(true);
     setSelectedPlan(planId);
@@ -105,7 +134,7 @@ export default function Subscription() {
       }
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || "Erro ao iniciar checkout.");
+        throw new Error(data.error || data.details || data.message || "Erro ao iniciar checkout. Verifique as credenciais da Viva Wallet.");
       }
 
       if (data.orderCode) {
@@ -146,8 +175,8 @@ export default function Subscription() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase">Assinatura & Planos</h1>
-          <p className="text-slate-500">Gira o seu plano e pagamentos com a Viva Wallet.</p>
+          <h1 className="text-3xl font-black tracking-tighter uppercase">{t('subscription_plans')}</h1>
+          <p className="text-slate-500">{t('manage_viva_wallet')}</p>
         </div>
       </div>
 
@@ -158,8 +187,8 @@ export default function Subscription() {
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-emerald-900 font-bold">Pagamento Confirmado!</h3>
-            <p className="text-emerald-700 text-sm">O seu plano foi atualizado com sucesso. Aproveite todas as funcionalidades.</p>
+            <h3 className="text-emerald-900 font-bold">{t('payment_confirmed')}</h3>
+            <p className="text-emerald-700 text-sm">{t('plan_updated_success')}</p>
           </div>
         </div>
       )}
@@ -176,23 +205,33 @@ export default function Subscription() {
           
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Plano Atual</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('current_plan')}</span>
               {company?.subscription_status === 'active' && (
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full uppercase tracking-widest">Ativo</span>
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full uppercase tracking-widest">{t('active')}</span>
               )}
             </div>
             <h2 className="text-3xl font-black tracking-tighter uppercase">{company?.plan || 'Free'}</h2>
             <p className="text-slate-500 text-sm mt-1">
-              Próxima faturação em: <span className="font-bold text-slate-900">28 de Março, 2026</span>
+              {t('next_billing')} <span className="font-bold text-slate-900">28 de Março, 2026</span>
             </p>
           </div>
 
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                if (company?.id) {
+                  window.open(`/api/invoices/download/${company.id}`, '_blank');
+                }
+              }}
+              className="px-6 py-3 bg-slate-50 text-slate-900 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" /> Fatura
+            </button>
             <button className="px-6 py-3 bg-slate-50 text-slate-900 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2">
-              <Clock className="w-4 h-4" /> Histórico
+              <Clock className="w-4 h-4" /> {t('history')}
             </button>
             <button className="px-6 py-3 bg-sidebar text-white rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-sidebar/20 flex items-center gap-2">
-              Gerir na Viva Wallet <ExternalLink className="w-4 h-4" />
+              {t('manage_on_viva')} <ExternalLink className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -215,7 +254,7 @@ export default function Subscription() {
             <h3 className="text-xl font-black tracking-tighter uppercase mb-1">{plan.name}</h3>
             <div className="flex items-baseline gap-1 mb-6">
               <span className="text-3xl font-black">€{plan.price}</span>
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">/mês</span>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">{t('per_month')}</span>
             </div>
 
             <div className="space-y-3 mb-8 flex-1">
@@ -240,9 +279,9 @@ export default function Subscription() {
               {isProcessing && selectedPlan === plan.id ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : company?.plan === plan.id ? (
-                'Plano Atual'
+                t('current_plan')
               ) : (
-                'Escolher'
+                t('choose')
               )}
             </button>
           </div>
@@ -273,10 +312,10 @@ export default function Subscription() {
       <div className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h3 className="text-xl font-black tracking-tighter uppercase">Método de Pagamento</h3>
-            <p className="text-slate-500 text-sm">Cartão associado à sua conta Viva Wallet.</p>
+            <h3 className="text-xl font-black tracking-tighter uppercase">{t('payment_method')}</h3>
+            <p className="text-slate-500 text-sm">{t('card_associated')}</p>
           </div>
-          <button className="text-sidebar font-bold text-sm uppercase tracking-widest hover:underline">Alterar</button>
+          <button className="text-sidebar font-bold text-sm uppercase tracking-widest hover:underline">{t('change')}</button>
         </div>
 
         <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-[24px] border border-slate-100">
@@ -285,7 +324,7 @@ export default function Subscription() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold">•••• •••• •••• 4242</p>
-            <p className="text-xs text-slate-400 uppercase tracking-widest">Expira em 12/28</p>
+            <p className="text-xs text-slate-400 uppercase tracking-widest">{t('expires_on')} 12/28</p>
           </div>
           <CheckCircle2 className="w-5 h-5 text-emerald-500" />
         </div>
@@ -298,12 +337,12 @@ export default function Subscription() {
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold">Precisa de um plano personalizado?</h3>
-            <p className="text-white/70 text-sm">Para frotas com mais de 100 viaturas, entre em contacto connosco.</p>
+            <h3 className="text-lg font-bold">{t('need_custom_plan')}</h3>
+            <p className="text-white/70 text-sm">{t('custom_plan_desc')}</p>
           </div>
         </div>
         <button className="px-8 py-4 bg-white text-indigo-600 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-indigo-50 transition-all">
-          Falar com Vendas
+          {t('talk_to_sales')}
         </button>
       </div>
     </div>

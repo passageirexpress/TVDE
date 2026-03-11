@@ -73,6 +73,8 @@ export default function Layout() {
                 <option value="EN">EN</option>
                 <option value="ES">ES</option>
                 <option value="FR">FR</option>
+                <option value="DE">DE</option>
+                <option value="IT">IT</option>
               </select>
             </div>
             

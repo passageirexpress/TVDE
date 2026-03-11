@@ -27,10 +27,13 @@ import {
   History,
   HelpCircle,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Trophy,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
 import { useDataStore } from '../store/useDataStore';
 
@@ -38,6 +41,7 @@ type NavItem = {
   icon: React.ElementType;
   label: string;
   path: string;
+  minPlan?: 'free' | 'pro' | 'enterprise';
 };
 
 type NavGroup = {
@@ -46,93 +50,7 @@ type NavGroup = {
   items: NavItem[];
 };
 
-const adminGroups: NavGroup[] = [
-  {
-    label: 'Dashboard',
-    items: [
-      { icon: LayoutDashboard, label: 'Visão Geral', path: '/dashboard' },
-      { icon: BarChart3, label: 'Desempenho', path: '/dashboard/performance' },
-      { icon: MapPin, label: 'Mapa da Frota', path: '/dashboard/fleet-map' },
-    ]
-  },
-  {
-    label: 'Operações',
-    items: [
-      { icon: Truck, label: 'Serviços', path: '/dashboard/services' },
-      { icon: Briefcase, label: 'Clientes B2B', path: '/dashboard/clients' },
-      { icon: Car, label: 'Aluguel', path: '/dashboard/rentals' },
-      { icon: FileText, label: 'Contratos', path: '/dashboard/contracts' },
-    ]
-  },
-  {
-    label: 'Frota',
-    items: [
-      { icon: Car, label: 'Veículos', path: '/dashboard/vehicles' },
-      { icon: Wrench, label: 'Manutenção', path: '/dashboard/maintenance' },
-      { icon: ShieldAlert, label: 'Sinistros', path: '/dashboard/claims' },
-      { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
-    ]
-  },
-  {
-    label: 'Equipa',
-    items: [
-      { icon: Users, label: 'Motoristas', path: '/dashboard/drivers' },
-      { icon: Shield, label: 'Usuários', path: '/dashboard/users' },
-      { icon: MessageSquare, label: 'Chat Equipa', path: '/dashboard/chat' },
-    ]
-  },
-  {
-    label: 'Financeiro',
-    items: [
-      { icon: Euro, label: 'Gestão Financeira', path: '/dashboard/finance' },
-      { icon: FileText, label: 'Despesas', path: '/dashboard/expenses' },
-      { icon: CreditCard, label: 'Assinatura', path: '/dashboard/subscription' },
-    ]
-  },
-  {
-    label: 'Sistema',
-    items: [
-      { icon: BarChart3, label: 'Relatórios', path: '/dashboard/reports' },
-      { icon: History, label: 'Auditoria', path: '/dashboard/audit-logs' },
-      { icon: Settings, label: 'Configurações', path: '/dashboard/settings' },
-      { icon: UserCircle, label: 'Meu Perfil', path: '/dashboard/profile' },
-      { icon: HelpCircle, label: 'Suporte & FAQ', path: '/dashboard/support' },
-    ]
-  }
-];
 
-const masterGroups: NavGroup[] = [
-  {
-    label: 'Master',
-    items: [
-      { icon: LayoutDashboard, label: 'Dashboard Master', path: '/dashboard' },
-      { icon: Shield, label: 'Empresas', path: '/dashboard/companies' },
-      { icon: History, label: 'Auditoria Global', path: '/dashboard/audit-logs' },
-      { icon: HelpCircle, label: 'Suporte Master', path: '/dashboard/support' },
-      { icon: Share2, label: 'Afiliados', path: '/dashboard/affiliates' },
-      { icon: Users, label: 'Todos Usuários', path: '/dashboard/users' },
-      { icon: CreditCard, label: 'Assinaturas Master', path: '/dashboard/subscription' },
-      { icon: Settings, label: 'Configurações Master', path: '/dashboard/settings' },
-    ]
-  }
-];
-
-const driverGroups: NavGroup[] = [
-  {
-    label: 'Motorista',
-    items: [
-      { icon: LayoutDashboard, label: 'Meus Ganhos', path: '/dashboard/driver-panel' },
-      { icon: MessageSquare, label: 'Chat Suporte', path: '/dashboard/chat' },
-      { icon: HelpCircle, label: 'Ajuda & FAQ', path: '/dashboard/support' },
-      { icon: ShieldAlert, label: 'Reportar Sinistro', path: '/dashboard/claims' },
-      { icon: Fuel, label: 'Abastecimentos', path: '/dashboard/fuel-logs' },
-      { icon: FileText, label: 'Minhas Despesas', path: '/dashboard/expenses' },
-      { icon: Car, label: 'Aluguel de Carros', path: '/dashboard/rentals' },
-      { icon: Car, label: 'Meu Veículo', path: '/dashboard/vehicles' },
-      { icon: UserCircle, label: 'Meu Perfil', path: '/dashboard/profile' },
-    ]
-  }
-];
 
 function SidebarGroup({ group, onClose }: { group: NavGroup, onClose: () => void }) {
   const location = useLocation();
@@ -185,11 +103,129 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
-  const { settings } = useDataStore();
+  const { settings, companies } = useDataStore();
 
-  const navGroups = user?.role === 'master' ? masterGroups : user?.role === 'driver' ? driverGroups : adminGroups;
+  const userCompany = companies.find(c => c.id === user?.company_id);
+  const userPlan = userCompany?.plan || 'free';
+
+  const adminGroups: NavGroup[] = [
+    {
+      label: t('dashboard'),
+      items: [
+        { icon: LayoutDashboard, label: t('overview'), path: '/dashboard' },
+        { icon: BarChart3, label: t('performance'), path: '/dashboard/performance', minPlan: 'pro' },
+        { icon: MapPin, label: t('fleet_map'), path: '/dashboard/fleet-map', minPlan: 'pro' },
+      ]
+    },
+    {
+      label: t('operations'),
+      items: [
+        { icon: Truck, label: t('services'), path: '/dashboard/services', minPlan: 'pro' },
+        { icon: Briefcase, label: t('b2b_clients'), path: '/dashboard/clients', minPlan: 'pro' },
+        { icon: Car, label: t('rentals'), path: '/dashboard/rentals', minPlan: 'pro' },
+        { icon: FileText, label: t('contracts'), path: '/dashboard/contracts', minPlan: 'pro' },
+      ]
+    },
+    {
+      label: t('fleet'),
+      items: [
+        { icon: Car, label: t('vehicles'), path: '/dashboard/vehicles' },
+        { icon: AlertTriangle, label: 'Multas', path: '/dashboard/penalties' },
+        { icon: Wrench, label: t('maintenance'), path: '/dashboard/maintenance', minPlan: 'pro' },
+        { icon: ShieldAlert, label: t('claims'), path: '/dashboard/claims' },
+        { icon: Fuel, label: t('fuel_logs'), path: '/dashboard/fuel-logs', minPlan: 'pro' },
+      ]
+    },
+    {
+      label: t('team'),
+      items: [
+        { icon: Users, label: t('drivers'), path: '/dashboard/drivers', minPlan: 'pro' },
+        { icon: Trophy, label: 'Ranking', path: '/dashboard/ranking', minPlan: 'pro' },
+        { icon: Shield, label: t('users'), path: '/dashboard/users', minPlan: 'pro' },
+        { icon: MessageSquare, label: t('team_chat'), path: '/dashboard/chat', minPlan: 'pro' },
+      ]
+    },
+    {
+      label: t('financial'),
+      items: [
+        { icon: Euro, label: t('financial_management'), path: '/dashboard/finance', minPlan: 'enterprise' },
+        { icon: FileText, label: t('expenses'), path: '/dashboard/expenses', minPlan: 'pro' },
+        { icon: CreditCard, label: t('subscription'), path: '/dashboard/subscription' },
+      ]
+    },
+    {
+      label: t('system'),
+      items: [
+        { icon: BarChart3, label: t('reports'), path: '/dashboard/reports', minPlan: 'enterprise' },
+        { icon: History, label: t('audit_logs'), path: '/dashboard/audit-logs', minPlan: 'enterprise' },
+        { icon: Settings, label: t('settings'), path: '/dashboard/settings' },
+        { icon: UserCircle, label: t('my_profile'), path: '/dashboard/profile' },
+        { icon: HelpCircle, label: t('support_faq'), path: '/dashboard/support' },
+      ]
+    }
+  ];
+
+  const masterGroups: NavGroup[] = [
+    {
+      label: t('master'),
+      items: [
+        { icon: LayoutDashboard, label: t('master_dashboard'), path: '/dashboard' },
+        { icon: Shield, label: t('companies'), path: '/dashboard/companies' },
+        { icon: History, label: t('global_audit'), path: '/dashboard/audit-logs' },
+        { icon: HelpCircle, label: t('master_support'), path: '/dashboard/support' },
+        { icon: Share2, label: t('affiliates'), path: '/dashboard/affiliates' },
+        { icon: Users, label: t('all_users'), path: '/dashboard/users' },
+        { icon: CreditCard, label: t('master_subscriptions'), path: '/dashboard/subscription' },
+        { icon: Settings, label: t('master_settings'), path: '/dashboard/settings' },
+      ]
+    }
+  ];
+
+  const driverGroups: NavGroup[] = [
+    {
+      label: t('driver'),
+      items: [
+        { icon: LayoutDashboard, label: t('my_earnings'), path: '/dashboard/driver-panel' },
+        { icon: MessageSquare, label: t('support_chat'), path: '/dashboard/chat' },
+        { icon: HelpCircle, label: t('help_faq'), path: '/dashboard/support' },
+        { icon: ShieldAlert, label: t('report_claim'), path: '/dashboard/claims' },
+        { icon: Fuel, label: t('fuel_logs'), path: '/dashboard/fuel-logs' },
+        { icon: FileText, label: t('my_expenses'), path: '/dashboard/expenses' },
+        { icon: Car, label: t('car_rentals'), path: '/dashboard/rentals' },
+        { icon: Car, label: t('my_vehicle'), path: '/dashboard/vehicles' },
+        { icon: UserCircle, label: t('my_profile'), path: '/dashboard/profile' },
+      ]
+    }
+  ];
+
+  const planOrder = { 'free': 0, 'pro': 1, 'enterprise': 2 };
+
+  const filterByPlan = (group: NavGroup) => {
+    if (user?.role === 'master') return true;
+    const filteredItems = group.items.filter(item => {
+      if (!item.minPlan) return true;
+      return planOrder[userPlan] >= planOrder[item.minPlan];
+    });
+    return filteredItems.length > 0;
+  };
+
+  const getFilteredItems = (group: NavGroup) => {
+    if (user?.role === 'master') return group.items;
+    return group.items.filter(item => {
+      if (!item.minPlan) return true;
+      return planOrder[userPlan] >= planOrder[item.minPlan];
+    });
+  };
+
+  const navGroups = (user?.role === 'master' ? masterGroups : user?.role === 'driver' ? driverGroups : adminGroups)
+    .filter(filterByPlan)
+    .map(group => ({
+      ...group,
+      items: getFilteredItems(group)
+    }));
 
   return (
     <>
@@ -236,7 +272,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="flex items-center gap-3 px-4 py-3 w-full text-sidebar-foreground hover:text-white hover:bg-white/5 rounded-xl transition-all"
           >
             <LogOut className="w-5 h-5" />
-            <span className="text-sm">Sair</span>
+            <span className="text-sm">{t('logout')}</span>
           </button>
         </div>
       </aside>

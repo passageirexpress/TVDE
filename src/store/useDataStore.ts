@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
-import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog, AuditLog, DeliveryPoint } from '../types';
+import { Driver, Vehicle, Expense, Rental, User, CompanySettings, AppNotification, Payment, EarningImport, Company, Maintenance, Claim, InventoryItem, ChatMessage, Contract, Affiliate, Client, Transfer, Delivery, FuelLog, AuditLog, DeliveryPoint, Penalty, Trip } from '../types';
 import { driversData } from '../data/mockData';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
@@ -30,6 +30,8 @@ interface DataState {
   settings: CompanySettings;
   auditLogs: AuditLog[];
   deliveryPoints: DeliveryPoint[];
+  penalties: Penalty[];
+  trips: Trip[];
   isLoading: boolean;
   darkMode: boolean;
   language: string;
@@ -147,6 +149,15 @@ interface DataState {
   addDeliveryPoint: (point: DeliveryPoint) => void;
   updateDeliveryPoint: (id: string, point: Partial<DeliveryPoint>) => void;
   deleteDeliveryPoint: (id: string) => void;
+
+  // Penalties
+  addPenalty: (penalty: Penalty) => void;
+  updatePenalty: (id: string, penalty: Partial<Penalty>) => void;
+  deletePenalty: (id: string) => void;
+
+  // Trips
+  addTrip: (trip: Trip) => void;
+  updateTrip: (id: string, trip: Partial<Trip>) => void;
   
   // Global Actions
   rehydrateData: () => void;
@@ -294,6 +305,8 @@ export const useDataStore = create<DataState>()(
       auditLogs: [],
       settings: initialSettings,
       deliveryPoints: [],
+      penalties: [],
+      trips: [],
       isLoading: false,
       darkMode: false,
       language: 'pt',
@@ -445,6 +458,8 @@ export const useDataStore = create<DataState>()(
           let affiliatesQuery = supabase.from('affiliates').select('*');
           let auditLogsQuery = supabase.from('audit_logs').select('*');
           let deliveryPointsQuery = supabase.from('delivery_points').select('*');
+          let penaltiesQuery = supabase.from('penalties').select('*');
+          let tripsQuery = supabase.from('trips').select('*');
 
           if (!isMaster && companyId) {
             driversQuery = driversQuery.eq('company_id', companyId);
@@ -466,6 +481,8 @@ export const useDataStore = create<DataState>()(
             fuelLogsQuery = fuelLogsQuery.eq('company_id', companyId);
             affiliatesQuery = affiliatesQuery.eq('company_id', companyId);
             deliveryPointsQuery = deliveryPointsQuery.or(`company_id.eq.${companyId},company_id.is.null`);
+            penaltiesQuery = penaltiesQuery.eq('company_id', companyId);
+            tripsQuery = tripsQuery.eq('company_id', companyId);
             // Managers don't see other companies
           }
 
@@ -473,13 +490,15 @@ export const useDataStore = create<DataState>()(
             drivers, vehicles, expenses, rentals, users, 
             payments, earningImports, settings, companies, 
             maintenances, claims, inventoryItems, chatMessages, 
-            contracts, clients, transfers, deliveries, fuelLogs, affiliates
+            contracts, clients, transfers, deliveries, fuelLogs, affiliates,
+            penalties, trips
           ] = await Promise.all([
             driversQuery, vehiclesQuery, expensesQuery, rentalsQuery, usersQuery,
             paymentsQuery, earningImportsQuery, settingsQuery, 
             isMaster ? companiesQuery : Promise.resolve({ data: [] }),
             maintenancesQuery, claimsQuery, inventoryItemsQuery, chatMessagesQuery,
-            contractsQuery, clientsQuery, transfersQuery, deliveriesQuery, fuelLogsQuery, affiliatesQuery
+            contractsQuery, clientsQuery, transfersQuery, deliveriesQuery, fuelLogsQuery, affiliatesQuery,
+            penaltiesQuery, tripsQuery
           ]);
 
           const [auditLogs, deliveryPoints] = await Promise.all([
@@ -508,6 +527,8 @@ export const useDataStore = create<DataState>()(
           if (affiliates.data) set({ affiliates: affiliates.data });
           if (auditLogs.data) set({ auditLogs: auditLogs.data });
           if (deliveryPoints.data) set({ deliveryPoints: deliveryPoints.data });
+          if (penalties.data) set({ penalties: penalties.data });
+          if (trips.data) set({ trips: trips.data });
         } catch (error) {
           console.error('Error fetching from Supabase:', error);
         } finally {
@@ -1085,6 +1106,40 @@ export const useDataStore = create<DataState>()(
         set((state) => ({ deliveryPoints: state.deliveryPoints.filter((p) => p.id !== id) }));
         supabase.from('delivery_points').delete().eq('id', id).then(({ error }) => {
           if (error) toast.error('Erro ao eliminar ponto de entrega');
+        });
+      },
+
+      // Penalties
+      addPenalty: (penalty) => {
+        set((state) => ({ penalties: [penalty, ...state.penalties] }));
+        get().saveToSupabase('penalties', penalty);
+      },
+      updatePenalty: (id, updated) => {
+        set((state) => {
+          const penalties = state.penalties.map((p) => (p.id === id ? { ...p, ...updated } : p));
+          const item = penalties.find(p => p.id === id);
+          if (item) get().saveToSupabase('penalties', item);
+          return { penalties };
+        });
+      },
+      deletePenalty: (id) => {
+        set((state) => ({ penalties: state.penalties.filter(p => p.id !== id) }));
+        supabase.from('penalties').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting penalty:', error);
+        });
+      },
+
+      // Trips
+      addTrip: (trip) => {
+        set((state) => ({ trips: [trip, ...state.trips] }));
+        get().saveToSupabase('trips', trip);
+      },
+      updateTrip: (id, updated) => {
+        set((state) => {
+          const trips = state.trips.map((t) => (t.id === id ? { ...t, ...updated } : t));
+          const item = trips.find(t => t.id === id);
+          if (item) get().saveToSupabase('trips', item);
+          return { trips };
         });
       },
 

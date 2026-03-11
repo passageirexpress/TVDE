@@ -67,6 +67,8 @@ export interface Vehicle {
   policy_number: string;
   status: 'active' | 'maintenance' | 'inactive';
   current_driver_id?: string;
+  current_km?: number;
+  next_maintenance_km?: number;
   documents: VehicleDocument[];
   maintenance_history: Maintenance[];
   claims: Claim[];
@@ -130,7 +132,7 @@ export interface User {
   id: string;
   company_id?: string; // Optional for master admins
   email: string;
-  role: 'master' | 'admin' | 'manager' | 'finance' | 'driver';
+  role: 'master' | 'admin' | 'manager' | 'finance' | 'driver' | 'passenger';
   full_name: string;
   password?: string;
   permissions?: string[];
@@ -340,9 +342,54 @@ export interface Affiliate {
   created_at: string;
 }
 
+export interface Penalty {
+  id: string;
+  driver_id: string;
+  vehicle_id: string;
+  amount: number;
+  description: string;
+  date: string;
+  status: 'pendente' | 'pago';
+  company_id?: string;
+  created_at?: string;
+}
+
+export interface Trip {
+  id: string;
+  passenger_id: string;
+  driver_id: string;
+  vehicle_id: string;
+  origin_lat: number;
+  origin_lng: number;
+  dest_lat: number;
+  dest_lng: number;
+  origin_address: string;
+  dest_address: string;
+  status: 'requested' | 'accepted' | 'ongoing' | 'completed' | 'cancelled';
+  estimated_price: number;
+  final_price?: number;
+  waiting_time_minutes?: number;
+  waiting_cost?: number;
+  is_delivery?: boolean;
+  delivery_type?: 'light' | 'heavy';
+  company_id?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface Rating {
+  id: string;
+  trip_id: string;
+  rater_id: string;
+  rated_id: string;
+  score: number;
+  comment?: string;
+  created_at: string;
+}
+
 export interface DeliveryPoint {
   id: string;
-  company_id?: string; // If null, it's a global point
+  company_id?: string;
   name: string;
   address: string;
   type: 'restaurant' | 'commercial_center' | 'supermarket' | 'other';

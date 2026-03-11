@@ -8,6 +8,8 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import crypto from "crypto";
+import PDFDocument from "pdfkit";
+import fs from "fs";
 
 dotenv.config();
 
@@ -33,6 +35,10 @@ const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
       }
     }) : null;
 
+const VIVA_MODE = 'production';
+const VIVA_API_URL = 'https://api.vivapayments.com';
+const VIVA_ACCOUNTS_URL = 'https://accounts.vivapayments.com';
+
 // Viva Wallet Integration Logic
 async function getVivaAccessToken() {
   const clientId = process.env.VIVA_CLIENT_ID;
@@ -43,14 +49,14 @@ async function getVivaAccessToken() {
     throw new Error("Viva Wallet credentials not configured");
   }
 
-  console.log("[VIVA] Iniciando obtenção de token para Client ID:", clientId.substring(0, 5) + "...");
+  console.log(`[VIVA] Iniciando obtenção de token (${VIVA_MODE}) para Client ID:`, clientId.substring(0, 5) + "...");
 
   try {
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
-    const response = await axios.post("https://accounts.vivapayments.com/connect/token", params, {
+    const response = await axios.post(`${VIVA_ACCOUNTS_URL}/connect/token`, params, {
       timeout: 10000,
       headers: {
         'Authorization': `Basic ${auth}`,
@@ -61,7 +67,13 @@ async function getVivaAccessToken() {
     return response.data.access_token;
   } catch (error: any) {
     const errorDetail = error.response?.data || error.message;
-    console.error("Viva Token Error:", errorDetail);
+    const statusCode = error.response?.status;
+    console.error("Viva Token Error:", errorDetail, "Status:", statusCode);
+    
+    if (statusCode === 403) {
+      throw new Error(`Acesso negado (403). Verifique se as credenciais estão corretas para o ambiente (${VIVA_MODE}) e se o IP do servidor está autorizado na Viva Wallet.`);
+    }
+    
     throw new Error(`Falha ao obter token da Viva Wallet: ${error.message}`);
   }
 }
@@ -91,7 +103,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendEmail({ to, subject, html }: { to: string, subject: string, html: string }) {
+async function sendEmail({ to, subject, html, attachments }: { to: string, subject: string, html: string, attachments?: any[] }) {
   const useSMTP = process.env.EMAIL_HOST && process.env.EMAIL_USERNAME && process.env.EMAIL_PASSWORD;
   
   if (useSMTP) {
@@ -101,6 +113,7 @@ async function sendEmail({ to, subject, html }: { to: string, subject: string, h
       to,
       subject,
       html,
+      attachments
     });
   } else {
     const resend = getResendClient();
@@ -111,10 +124,87 @@ async function sendEmail({ to, subject, html }: { to: string, subject: string, h
         to: [to],
         subject,
         html,
+        attachments
       });
     }
     throw new Error("Serviço de email não configurado (SMTP ou Resend).");
   }
+}
+
+async function generateInvoicePDF(company: any, planId: string, amount: number, orderCode: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 50 });
+      const buffers: Buffer[] = [];
+      
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', reject);
+
+      // Header
+      doc.fontSize(20).text('Fatura', { align: 'left' });
+      doc.moveDown();
+
+      // Issuer details
+      doc.fontSize(10).font('Helvetica-Bold').text('PASSAGEIRO EXPRESS UNIPESSOA LDA');
+      doc.font('Helvetica').text('NIF: 517400000'); // Example NIF
+      doc.text('Rua Exemplo, 123');
+      doc.text('1000-001 Lisboa, Portugal');
+      doc.moveDown();
+
+      // Client details
+      doc.font('Helvetica-Bold').text('Faturado a:');
+      doc.font('Helvetica').text(company.name || 'Cliente');
+      if (company.address) doc.text(company.address);
+      if (company.nif) doc.text(`NIF: ${company.nif}`);
+      doc.moveDown();
+
+      // Invoice details
+      const invoiceDate = new Date().toISOString().split('T')[0];
+      doc.text(`Nº Fatura: FT ${orderCode}`);
+      doc.text(`Data de emissão: ${invoiceDate}`);
+      doc.moveDown(2);
+
+      // Table Header
+      const tableTop = doc.y;
+      doc.font('Helvetica-Bold');
+      doc.text('Descrição', 50, tableTop);
+      doc.text('Qtd', 300, tableTop);
+      doc.text('Preço Unit.', 350, tableTop);
+      doc.text('IVA', 420, tableTop);
+      doc.text('Total', 480, tableTop);
+      
+      doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+      doc.moveDown();
+
+      // Table Row
+      const rowTop = doc.y;
+      doc.font('Helvetica');
+      doc.text(`Plano ${planId.toUpperCase()}`, 50, rowTop);
+      doc.text('1', 300, rowTop);
+      
+      const ivaRate = 0.23;
+      const baseAmount = amount / (1 + ivaRate);
+      const ivaAmount = amount - baseAmount;
+
+      doc.text(`€ ${baseAmount.toFixed(2)}`, 350, rowTop);
+      doc.text('23%', 420, rowTop);
+      doc.text(`€ ${amount.toFixed(2)}`, 480, rowTop);
+      
+      doc.moveTo(50, rowTop + 15).lineTo(550, rowTop + 15).stroke();
+      doc.moveDown(2);
+
+      // Totals
+      doc.font('Helvetica-Bold');
+      doc.text(`Total s/ IVA: € ${baseAmount.toFixed(2)}`, { align: 'right' });
+      doc.text(`Total IVA: € ${ivaAmount.toFixed(2)}`, { align: 'right' });
+      doc.fontSize(12).text(`Total a Pagar: € ${amount.toFixed(2)}`, { align: 'right' });
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 async function startServer() {
@@ -280,14 +370,14 @@ async function startServer() {
         return res.status(403).json({ error: "Apenas administradores master podem realizar diagnósticos." });
       }
 
-      console.log("[VIVA DIAGNOSTIC] Iniciando teste de conectividade...");
+      console.log(`[VIVA DIAGNOSTIC] Iniciando teste de conectividade (${VIVA_MODE})...`);
       const accessToken = await getVivaAccessToken();
       
       res.json({ 
         success: true, 
-        message: "Conexão com Viva Wallet (Produção) estabelecida com sucesso!",
+        message: `Conexão com Viva Wallet (${VIVA_MODE}) estabelecida com sucesso!`,
         status: "200 OK",
-        mode: "Production"
+        mode: VIVA_MODE
       });
     } catch (error: any) {
       console.error("[VIVA DIAGNOSTIC ERROR]", error.message);
@@ -295,7 +385,7 @@ async function startServer() {
         success: false, 
         error: "Falha na conexão com Viva Wallet",
         details: error.message,
-        mode: "Production"
+        mode: VIVA_MODE
       });
     }
   });
@@ -311,15 +401,12 @@ async function startServer() {
 
     try {
       const accessToken = await getVivaAccessToken();
-      console.log("[VIVA] Token de acesso obtido com sucesso");
-      const merchantId = process.env.VIVA_MERCHANT_ID;
-      const apiKey = process.env.VIVA_API_KEY;
       const sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
 
       // Viva Wallet expects amount in cents
       const amountInCents = Math.round(amount * 100);
 
-      const orderResponse = await axios.post("https://api.vivapayments.com/checkout/v2/orders", {
+      const orderResponse = await axios.post(`${VIVA_API_URL}/checkout/v2/orders`, {
         amount: amountInCents,
         customerTrns: `Assinatura Plano ${planId} - Empresa ${companyId}`,
         customer: {
@@ -344,13 +431,24 @@ async function startServer() {
         }
       });
 
+      const checkoutBaseUrl = 'https://www.vivapayments.com';
+      
       res.json({ 
         orderCode: orderResponse.data.orderCode,
-        checkoutUrl: `https://www.vivapayments.com/web/checkout?ref=${orderResponse.data.orderCode}`
+        checkoutUrl: `${checkoutBaseUrl}/web/checkout?ref=${orderResponse.data.orderCode}`
       });
     } catch (error: any) {
       const errorDetail = error.response?.data?.errors || error.response?.data || error.message;
-      console.error("Viva Create Order Error:", errorDetail);
+      const statusCode = error.response?.status;
+      console.error("Viva Create Order Error:", errorDetail, "Status:", statusCode);
+      
+      if (statusCode === 403) {
+        return res.status(403).json({
+          error: `Acesso negado (403) ao criar ordem. Verifique se o Source Code está correto para o ambiente (${VIVA_MODE}) e se o IP está autorizado.`,
+          details: errorDetail
+        });
+      }
+      
       res.status(500).json({ 
         error: "Erro ao criar ordem de pagamento na Viva Wallet",
         details: errorDetail
@@ -366,15 +464,16 @@ async function startServer() {
     try {
       const accessToken = await getVivaAccessToken();
       
-      const response = await axios.get(`https://api.vivapayments.com/checkout/v2/orders/${orderCode}`, {
+      // The correct endpoint to retrieve an order by orderCode is /api/orders/{orderCode}
+      const response = await axios.get(`${VIVA_API_URL}/api/orders/${orderCode}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
 
       const orderData = response.data;
-      // State 3 means paid
-      if (orderData.stateId === 3) {
+      // StateId 3 means paid (in /api/orders response, the property is StateId, not stateId)
+      if (orderData.StateId === 3) {
         // Update company plan in Supabase
         const { error } = await supabaseAdmin
           .from('companies')
@@ -387,13 +486,79 @@ async function startServer() {
 
         if (error) throw error;
 
+        // Fetch company details to generate invoice
+        const { data: company } = await supabaseAdmin
+          .from('companies')
+          .select('*')
+          .eq('id', companyId)
+          .single();
+
+        if (company && company.email) {
+          try {
+            const amount = orderData.Amount || (planId === 'pro' ? 49.90 : 99.90);
+            const pdfBuffer = await generateInvoicePDF(company, planId as string, amount, orderCode as string);
+            
+            await sendEmail({
+              to: company.email,
+              subject: `Fatura de Assinatura - Plano ${String(planId).toUpperCase()}`,
+              html: `
+                <h2>Obrigado pela sua assinatura!</h2>
+                <p>O seu pagamento foi confirmado e o plano <strong>${String(planId).toUpperCase()}</strong> está agora ativo.</p>
+                <p>Em anexo encontra a sua fatura.</p>
+              `,
+              attachments: [
+                {
+                  filename: `Fatura_${orderCode}.pdf`,
+                  content: pdfBuffer
+                }
+              ]
+            });
+            console.log(`[INVOICE] Fatura enviada para ${company.email}`);
+          } catch (invoiceError) {
+            console.error("[INVOICE ERROR] Falha ao gerar/enviar fatura:", invoiceError);
+          }
+        }
+
         res.json({ success: true, message: "Pagamento confirmado e plano ativado!" });
       } else {
-        res.json({ success: false, state: orderData.stateId, message: "Pagamento ainda não confirmado." });
+        res.json({ success: false, state: orderData.StateId, message: "Pagamento ainda não confirmado." });
       }
     } catch (error: any) {
       console.error("Viva Verify Error:", error.response?.data || error.message);
       res.status(500).json({ error: "Erro ao verificar pagamento" });
+    }
+  });
+
+  app.get("/api/invoices/download/:companyId", async (req, res) => {
+    const { companyId } = req.params;
+    const { planId, orderCode, amount } = req.query;
+
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin not configured" });
+
+    try {
+      const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .single();
+
+      if (!company) {
+        return res.status(404).json({ error: "Empresa não encontrada" });
+      }
+
+      const pdfBuffer = await generateInvoicePDF(
+        company, 
+        (planId as string) || company.plan, 
+        Number(amount) || (company.plan === 'pro' ? 49.90 : 99.90), 
+        (orderCode as string) || `MANUAL-${Date.now()}`
+      );
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Fatura_${company.name.replace(/\s+/g, '_')}.pdf`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Download Invoice Error:", error);
+      res.status(500).json({ error: "Erro ao gerar fatura" });
     }
   });
 
@@ -408,7 +573,7 @@ async function startServer() {
       // 1. Process the transaction using Native Checkout API
       // Note: In a real production environment, you should use card tokenization 
       // to avoid handling raw card data on your server (PCI compliance).
-      const response = await axios.post("https://api.vivapayments.com/nativecheckout/v2/transactions", {
+      const response = await axios.post(`${VIVA_API_URL}/nativecheckout/v2/transactions`, {
         orderCode,
         card
       }, {
@@ -442,11 +607,83 @@ async function startServer() {
         });
       }
     } catch (error: any) {
-      console.error("Viva Native Process Error:", error.response?.data || error.message);
+      const errorDetail = error.response?.data?.errors || error.response?.data || error.message;
+      const statusCode = error.response?.status;
+      console.error("Viva Native Process Error:", errorDetail, "Status:", statusCode);
+      
+      if (statusCode === 403) {
+        return res.status(403).json({
+          error: `Acesso negado (403) ao processar pagamento. Verifique se o IP está autorizado na Viva Wallet.`,
+          details: errorDetail
+        });
+      }
+      
       res.status(500).json({ 
         error: "Erro ao processar pagamento nativo", 
-        details: error.response?.data?.message || error.message 
+        details: errorDetail 
       });
+    }
+  });
+
+  // Viva Wallet Webhook
+  app.get(["/api/viva/webhook", "/api/viva/webhook/"], (req, res) => {
+    console.log("[VIVA WEBHOOK GET] Received verification request. Query:", req.query);
+    // Viva Wallet sends a GET request to verify the webhook URL
+    const verificationKey = req.query.v;
+    if (verificationKey) {
+      console.log("[VIVA WEBHOOK GET] Responding with Key:", verificationKey);
+      return res.json({ Key: verificationKey });
+    }
+    console.warn("[VIVA WEBHOOK GET] Missing verification key 'v' in query.");
+    res.status(200).json({ message: "Webhook endpoint is active. Waiting for verification key." });
+  });
+
+  app.post(["/api/viva/webhook", "/api/viva/webhook/"], async (req, res) => {
+    try {
+      const event = req.body;
+      console.log("[VIVA WEBHOOK] Received event:", event.EventTypeId);
+
+      // EventTypeId 1796 = TransactionPaymentCreated
+      if (event.EventTypeId === 1796 && event.EventData) {
+        const statusId = event.EventData.StatusId;
+        const customerTrns = event.EventData.CustomerTrns || "";
+
+        if (statusId === 'F') { // F = Finished
+          // Extract companyId and planId from customerTrns
+          // Format used in create-order: "Assinatura Plano ${planId} - Empresa ${companyId}"
+          const match = customerTrns.match(/Plano (\w+) - Empresa ([a-zA-Z0-9-]+)/);
+          
+          if (match && match.length === 3) {
+            const planId = match[1];
+            const companyId = match[2];
+
+            if (supabaseAdmin) {
+              const { error } = await supabaseAdmin
+                .from('companies')
+                .update({ 
+                  plan: planId, 
+                  subscription_status: 'active',
+                  last_payment_date: new Date().toISOString()
+                })
+                .eq('id', companyId);
+
+              if (error) {
+                console.error("[VIVA WEBHOOK] Error updating company:", error);
+              } else {
+                console.log(`[VIVA WEBHOOK] Company ${companyId} updated to plan ${planId} successfully.`);
+              }
+            }
+          } else {
+            console.warn("[VIVA WEBHOOK] Could not parse companyId from CustomerTrns:", customerTrns);
+          }
+        }
+      }
+
+      // Always return 200 OK to acknowledge receipt
+      res.status(200).send("Webhook received");
+    } catch (error) {
+      console.error("[VIVA WEBHOOK] Error processing webhook:", error);
+      res.status(500).send("Internal Server Error");
     }
   });
 
@@ -487,7 +724,7 @@ async function startServer() {
       
       try {
         const accessToken = await getVivaAccessToken();
-        const orderRes = await axios.get(`https://api.vivapayments.com/checkout/v2/orders/${orderCode}`, {
+        const orderRes = await axios.get(`${VIVA_API_URL}/checkout/v2/orders/${orderCode}`, {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
@@ -704,7 +941,7 @@ async function startServer() {
           const sourceCode = process.env.VIVA_SOURCE_CODE || 'Default';
           const amountInCents = Math.round(amount * 100);
 
-          const orderResponse = await axios.post("https://api.vivapayments.com/checkout/v2/orders", {
+          const orderResponse = await axios.post(`${VIVA_API_URL}/checkout/v2/orders`, {
             amount: amountInCents,
             customerTrns: `Assinatura Plano ${plan} - Empresa ${companyId}`,
             customer: {
@@ -729,7 +966,8 @@ async function startServer() {
           });
 
           orderCode = orderResponse.data.orderCode;
-          checkoutUrl = `https://www.vivapayments.com/web/checkout?ref=${orderCode}`;
+          const checkoutBaseUrl = 'https://www.vivapayments.com';
+          checkoutUrl = `${checkoutBaseUrl}/web/checkout?ref=${orderCode}`;
           
           // Update company status to incomplete pending payment
           await supabaseAdmin

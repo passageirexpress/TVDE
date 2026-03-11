@@ -32,6 +32,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { formatCurrency, getUberPeriod, cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
@@ -60,6 +61,7 @@ const StatCard = ({ title, value, icon: Icon, trend, trendValue, link }: any) =>
 );
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { drivers, vehicles, payments, expenses, transfers, deliveries, claims, maintenances, fetchFromSupabase, isLoading } = useDataStore();
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
@@ -76,15 +78,15 @@ export default function Dashboard() {
       const result = await response.json();
       
       if (response.ok) {
-        toast.success(result.message, {
-          description: `Status: ${result.status} | Modo: ${result.mode}`,
+        toast.success(t('diagnostic_success'), {
+          description: `${t('status')}: ${result.status} | ${t('mode')}: ${result.mode}`,
           duration: 5000
         });
       } else {
-        throw new Error(result.error || result.details || 'Erro desconhecido');
+        throw new Error(result.error || result.details || t('unknown_error'));
       }
     } catch (error: any) {
-      toast.error('Falha no Diagnóstico Viva Wallet', {
+      toast.error(t('diagnostic_failed'), {
         description: error.message,
         duration: 8000
       });
@@ -109,13 +111,13 @@ export default function Dashboard() {
       });
 
       if (!boltRes.ok || !uberRes.ok) {
-        throw new Error('Erro ao sincronizar com uma ou mais plataformas.');
+        throw new Error(t('sync_error_platforms'));
       }
 
       await fetchFromSupabase();
-      toast.success('Sincronização concluída com sucesso!');
+      toast.success(t('sync_success'));
     } catch (error: any) {
-      toast.error('Erro na sincronização: ' + error.message);
+      toast.error(t('sync_error') + ': ' + error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -166,6 +168,11 @@ export default function Dashboard() {
 
   const user = useAuthStore(state => state.user);
   const { companies } = useDataStore();
+  const userCompany = companies.find(c => c.id === user?.company_id);
+  const userPlan = userCompany?.plan || 'free';
+  const planOrder: Record<string, number> = { 'free': 0, 'pro': 1, 'enterprise': 2 };
+  const isPro = user?.role === 'master' || planOrder[userPlan] >= 1;
+  const isEnterprise = user?.role === 'master' || planOrder[userPlan] >= 2;
 
   const criticalAlerts = vehicles
     .filter(v => {
@@ -266,8 +273,8 @@ export default function Dashboard() {
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Painel Master</h1>
-            <p className="text-gray-500 mt-1">Visão geral de todo o ecossistema SaaS.</p>
+            <h1 className="text-3xl font-bold tracking-tight">{t('master_panel')}</h1>
+            <p className="text-gray-500 mt-1">{t('saas_overview')}</p>
           </div>
           <div className="flex items-center gap-3">
             <button 
@@ -280,32 +287,32 @@ export default function Dashboard() {
               ) : (
                 <Activity className="w-4 h-4" />
               )}
-              Testar Viva Wallet (Prod)
+              {t('test_viva_wallet')}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
-            title="Total de Empresas" 
+            title={t('total_companies')} 
             value={companies.length.toString()} 
             icon={Building2} 
             link="/dashboard/companies"
           />
           <StatCard 
-            title="Total de Motoristas" 
+            title={t('total_drivers')} 
             value={drivers.length.toString()} 
             icon={Users} 
             link="/dashboard/users"
           />
           <StatCard 
-            title="Total de Veículos" 
+            title={t('total_vehicles')} 
             value={vehicles.length.toString()} 
             icon={Car} 
             link="/dashboard/vehicles"
           />
           <StatCard 
-            title="Receita Global Bruta" 
+            title={t('global_gross_revenue')} 
             value={formatCurrency(totalGrossRevenue)} 
             icon={TrendingUp} 
           />
@@ -313,7 +320,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold mb-6">Empresas por Plano</h3>
+            <h3 className="text-lg font-bold mb-6">{t('companies_by_plan')}</h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
@@ -332,7 +339,7 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold mb-6">Alertas Críticos (Global)</h3>
+            <h3 className="text-lg font-bold mb-6">{t('global_critical_alerts')}</h3>
             <div className="space-y-4">
               {criticalAlerts.length > 0 ? (
                 criticalAlerts.slice(0, 5).map((alertItem, idx) => (
@@ -364,8 +371,8 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Bem-vindo de volta ao seu painel de gestão de frota.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('dashboard')}</h1>
+          <p className="text-gray-500 mt-1">{t('welcome_back')}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className={cn(
@@ -375,9 +382,9 @@ export default function Dashboard() {
             dbStatus === 'error' && "bg-red-50 text-red-600 border-red-100"
           )}>
             <Database className={cn("w-3.5 h-3.5", dbStatus === 'checking' && "animate-pulse")} />
-            {dbStatus === 'checking' && "Verificando Banco..."}
-            {dbStatus === 'connected' && "Banco Conectado"}
-            {dbStatus === 'error' && "Erro de Conexão"}
+            {dbStatus === 'checking' && t('db_checking')}
+            {dbStatus === 'connected' && t('db_connected')}
+            {dbStatus === 'error' && t('db_error')}
             {dbStatus === 'connected' && <CheckCircle2 className="w-3 h-3" />}
             {dbStatus === 'error' && <XCircle className="w-3 h-3" />}
           </div>
@@ -391,14 +398,14 @@ export default function Dashboard() {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Sincronizar
+            {t('sync')}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
-          title="Motoristas Ativos" 
+          title={t('active_drivers')} 
           value={activeDriversCount.toString()} 
           icon={Users} 
           trend="up" 
@@ -406,13 +413,13 @@ export default function Dashboard() {
           link="/dashboard/drivers"
         />
         <StatCard 
-          title="Veículos em Operação" 
+          title={t('vehicles_in_operation')} 
           value={activeVehiclesCount.toString()} 
           icon={Car} 
           link="/dashboard/vehicles"
         />
         <StatCard 
-          title="Receita Bruta" 
+          title={t('gross_revenue')} 
           value={formatCurrency(totalGrossRevenue)} 
           icon={TrendingUp} 
           trend="up" 
@@ -420,7 +427,7 @@ export default function Dashboard() {
           link="/dashboard/finance"
         />
         <StatCard 
-          title="Serviços Ativos" 
+          title={t('active_services')} 
           value={(activeTransfers.length + activeDeliveries.length).toString()} 
           icon={Truck} 
           link="/dashboard/services"
@@ -432,8 +439,8 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <div className="p-8 border-b border-gray-50 flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Mapa da Frota</h3>
-              <p className="text-sm text-gray-500 font-medium">Localização em tempo real</p>
+              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">{t('fleet_map_title')}</h3>
+              <p className="text-sm text-gray-500 font-medium">{t('real_time_location')}</p>
             </div>
             <Link to="/dashboard/fleet-map" className="p-3 bg-sidebar/5 text-sidebar rounded-2xl hover:bg-sidebar/10 transition-all">
               <MapIcon className="w-5 h-5" />
@@ -446,12 +453,12 @@ export default function Dashboard() {
                   <div className="absolute -inset-4 bg-sidebar/10 rounded-full animate-ping"></div>
                   <MapIcon className="w-12 h-12 text-sidebar relative z-10" />
                 </div>
-                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Mapa Interativo Ativo</p>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{t('fleet_map_title')} Ativo</p>
                 <Link 
                   to="/dashboard/fleet-map"
                   className="inline-block px-6 py-3 bg-sidebar text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-sidebar/20"
                 >
-                  Abrir Mapa Completo
+                  {t('open_full_map')}
                 </Link>
               </div>
             </div>
@@ -466,8 +473,8 @@ export default function Dashboard() {
         <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 border-b border-gray-50 flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Atividade Recente</h3>
-              <p className="text-sm text-gray-500 font-medium">Últimos eventos da frota</p>
+              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">{t('recent_activity_title')}</h3>
+              <p className="text-sm text-gray-500 font-medium">{t('last_fleet_events')}</p>
             </div>
             <div className="p-3 bg-gray-50 text-gray-400 rounded-2xl">
               <Activity className="w-5 h-5" />
@@ -502,10 +509,10 @@ export default function Dashboard() {
         <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 border-b border-gray-50 flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Operações em Tempo Real</h3>
-              <p className="text-sm text-gray-500 font-medium">Próximos Transfers e Entregas</p>
+              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">{t('live_operations')}</h3>
+              <p className="text-sm text-gray-500 font-medium">{t('next_transfers_deliveries')}</p>
             </div>
-            <Link to="/dashboard/services" className="text-xs font-black text-sidebar hover:underline uppercase tracking-widest">Ver Todos</Link>
+            <Link to="/dashboard/services" className="text-xs font-black text-sidebar hover:underline uppercase tracking-widest">{t('view_all')}</Link>
           </div>
           <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
             {[...activeTransfers, ...activeDeliveries]
@@ -550,154 +557,164 @@ export default function Dashboard() {
         </div>
 
         {/* IVA Table and Projections */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-6">Gestão de IVA (6%)</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-50">
-                  <th className="pb-4 font-bold text-gray-400 text-xs uppercase tracking-widest">Período</th>
-                  <th className="pb-4 font-bold text-gray-400 text-xs uppercase tracking-widest">Faturamento</th>
-                  <th className="pb-4 font-bold text-gray-400 text-xs uppercase tracking-widest">IVA a Pagar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                <tr>
-                  <td className="py-4 text-sm font-medium">Mensal (Atual)</td>
-                  <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue)}</td>
-                  <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(monthlyIVA)}</td>
-                </tr>
-                <tr>
-                  <td className="py-4 text-sm font-medium">Trimestral (Projeção)</td>
-                  <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue * 3)}</td>
-                  <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(quarterlyIVA)}</td>
-                </tr>
-                <tr>
-                  <td className="py-4 text-sm font-medium">Semestral (Projeção)</td>
-                  <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue * 6)}</td>
-                  <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(semiAnnualIVA)}</td>
-                </tr>
-                <tr>
-                  <td className="py-4 text-sm font-medium">Anual (Projeção)</td>
-                  <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue * 12)}</td>
-                  <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(annualIVA)}</td>
-                </tr>
-              </tbody>
-            </table>
+        {isPro && (
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold mb-6">{t('iva_management')}</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-gray-50">
+                    <th className="pb-4 font-bold text-gray-400 text-xs uppercase tracking-widest">{t('period')}</th>
+                    <th className="pb-4 font-bold text-gray-400 text-xs uppercase tracking-widest">{t('billing')}</th>
+                    <th className="pb-4 font-bold text-gray-400 text-xs uppercase tracking-widest">{t('iva_to_pay')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  <tr>
+                    <td className="py-4 text-sm font-medium">{t('monthly_current')}</td>
+                    <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue)}</td>
+                    <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(monthlyIVA)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-4 text-sm font-medium">{t('quarterly_projection')}</td>
+                    <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue * 3)}</td>
+                    <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(quarterlyIVA)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-4 text-sm font-medium">{t('semi_annual_projection')}</td>
+                    <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue * 6)}</td>
+                    <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(semiAnnualIVA)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-4 text-sm font-medium">{t('annual_projection')}</td>
+                    <td className="py-4 text-sm font-bold">{formatCurrency(totalGrossRevenue * 12)}</td>
+                    <td className="py-4 text-sm font-bold text-red-500">{formatCurrency(annualIVA)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-6">Projeção de IVA Anual</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={projectionData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value) => [formatCurrency(Number(value)), 'IVA']}
-                />
-                <Bar dataKey="iva" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+        {isPro && (
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold mb-6">{t('annual_iva_projection')}</h3>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={projectionData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value) => [formatCurrency(Number(value)), 'IVA']}
+                  />
+                  <Bar dataKey="iva" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-bold">Rentabilidade por Viatura</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs text-gray-500">Lucro</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span className="text-xs text-gray-500">Despesas</span>
+        {isPro && (
+          <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-bold">{t('profitability_by_vehicle')}</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="text-xs text-gray-500">{t('profit')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <span className="text-xs text-gray-500">{t('expenses')}</span>
+                </div>
               </div>
             </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={vehicleProfitData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
+                  <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={vehicleProfitData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value) => formatCurrency(Number(value))}
-                />
-                <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
 
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-6">Ranking de Motoristas</h3>
-          <div className="space-y-6">
-            {topDrivers.map((driver, idx) => (
-              <div key={driver.id} className="flex items-center gap-4">
-                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-500">
-                  {idx + 1}
+        {isPro && (
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold mb-6">{t('driver_ranking')}</h3>
+            <div className="space-y-6">
+              {topDrivers.map((driver, idx) => (
+                <div key={driver.id} className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-500">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">{driver.full_name}</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">{driver.category}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-emerald-600">{driver.rating_uber} ★</p>
+                    <p className="text-[10px] text-gray-400">Rating Médio</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold">{driver.full_name}</p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest">{driver.category}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-emerald-600">{driver.rating_uber} ★</p>
-                  <p className="text-[10px] text-gray-400">Rating Médio</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <Link to="/dashboard/drivers" className="mt-8 block text-center py-3 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all">
+              {t('view_all')}
+            </Link>
           </div>
-          <Link to="/dashboard/drivers" className="mt-8 block text-center py-3 bg-gray-50 text-gray-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all">
-            Ver Todos os Motoristas
-          </Link>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-bold">Evolução da Receita (Últimos 6 Meses)</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
-                <span className="text-xs text-gray-500">Uber</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                <span className="text-xs text-gray-500">Bolt</span>
+        {isEnterprise && (
+          <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-bold">{t('revenue_evolution')}</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                  <span className="text-xs text-gray-500">Uber</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="text-xs text-gray-500">Bolt</span>
+                </div>
               </div>
             </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
+                  <Bar dataKey="uber" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
+                  <Bar dataKey="bolt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#9ca3af'}} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value) => formatCurrency(Number(value))}
-                />
-                <Bar dataKey="uber" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
-                <Bar dataKey="bolt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
 
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold mb-4">Alertas Críticos</h3>
+            <h3 className="text-lg font-bold mb-4">{t('critical_alerts')}</h3>
             <div className="space-y-4">
               {criticalAlerts.length > 0 ? (
                 criticalAlerts.map((alertItem, idx) => (
@@ -722,64 +739,68 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <Link to="/dashboard/finance" className="bg-sidebar p-6 rounded-2xl shadow-lg text-white block hover:bg-black transition-all">
-            <h3 className="text-lg font-bold mb-2">Próximo Pagamento</h3>
-            <p className="text-sidebar-foreground text-sm">Período: {getUberPeriod()}</p>
-            <div className="mt-6 flex items-end justify-between">
-              <div>
-                <p className="text-xs text-sidebar-foreground uppercase tracking-widest">Total Estimado</p>
-                <p className="text-3xl font-bold mt-1">{formatCurrency(pendingPaymentsTotal)}</p>
+          {isEnterprise && (
+            <Link to="/dashboard/finance" className="bg-sidebar p-6 rounded-2xl shadow-lg text-white block hover:bg-black transition-all">
+              <h3 className="text-lg font-bold mb-2">{t('next_payment')}</h3>
+              <p className="text-sidebar-foreground text-sm">{t('period')}: {getUberPeriod()}</p>
+              <div className="mt-6 flex items-end justify-between">
+                <div>
+                  <p className="text-xs text-sidebar-foreground uppercase tracking-widest">{t('estimated_total')}</p>
+                  <p className="text-3xl font-bold mt-1">{formatCurrency(pendingPaymentsTotal)}</p>
+                </div>
+                <div className="bg-white/10 p-2 rounded-lg">
+                  <Euro className="w-6 h-6" />
+                </div>
               </div>
-              <div className="bg-white/10 p-2 rounded-lg">
-                <Euro className="w-6 h-6" />
-              </div>
-            </div>
-          </Link>
+            </Link>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-lg font-bold">Pagamentos Pendentes</h3>
-            <Link to="/dashboard/finance" className="text-xs font-bold text-sidebar uppercase tracking-widest hover:underline">
-              Ver Todos
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {payments.filter(p => p.status === 'pending').length > 0 ? (
-              payments
-                .filter(p => p.status === 'pending')
-                .slice(0, 5)
-                .map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-sidebar/20 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-400">
-                        <Euro className="w-5 h-5" />
+        {isEnterprise && (
+          <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-bold">{t('pending_payments')}</h3>
+              <Link to="/dashboard/finance" className="text-xs font-bold text-sidebar uppercase tracking-widest hover:underline">
+                {t('view_all')}
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {payments.filter(p => p.status === 'pending').length > 0 ? (
+                payments
+                  .filter(p => p.status === 'pending')
+                  .slice(0, 5)
+                  .map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-sidebar/20 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-400">
+                          <Euro className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{payment.driver || drivers.find(d => d.id === payment.driver_id)?.full_name}</p>
+                          <p className="text-[10px] text-gray-400 uppercase tracking-widest">{payment.period || 'Período não definido'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{payment.driver || drivers.find(d => d.id === payment.driver_id)?.full_name}</p>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest">{payment.period || 'Período não definido'}</p>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-sidebar">{formatCurrency(payment.net_amount || payment.net || 0)}</p>
+                        <Link 
+                          to={`/dashboard/finance`} 
+                          className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-sidebar transition-colors"
+                        >
+                          Detalhes
+                        </Link>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-sidebar">{formatCurrency(payment.net_amount || payment.net || 0)}</p>
-                      <Link 
-                        to={`/dashboard/finance`} 
-                        className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-sidebar transition-colors"
-                      >
-                        Detalhes
-                      </Link>
-                    </div>
-                  </div>
-                ))
-            ) : (
-              <div className="py-12 text-center">
-                <CheckCircle2 className="w-12 h-12 text-emerald-100 mx-auto mb-4" />
-                <p className="text-sm text-gray-500 font-medium">Todos os pagamentos estão em dia!</p>
-              </div>
-            )}
+                  ))
+              ) : (
+                <div className="py-12 text-center">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-100 mx-auto mb-4" />
+                  <p className="text-sm text-gray-500 font-medium">Todos os pagamentos estão em dia!</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

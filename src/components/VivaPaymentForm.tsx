@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { CreditCard, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import React, { useState, useEffect } from 'react';
+import { CreditCard, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { formatCurrency } from '../lib/utils';
 
 interface VivaPaymentFormProps {
   amount: number;
@@ -9,6 +9,13 @@ interface VivaPaymentFormProps {
   planId: string;
   onSuccess: (transactionId: string) => void;
   onCancel?: () => void;
+}
+
+// Extend Window interface for VivaCheckout
+declare global {
+  interface Window {
+    VivaCheckout: any;
+  }
 }
 
 export default function VivaPaymentForm({ 
@@ -21,72 +28,70 @@ export default function VivaPaymentForm({
 }: VivaPaymentFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cardData, setCardData] = useState({
-    number: '',
-    expirationMonth: '',
-    expirationYear: '',
-    cvv: '',
-    holderName: ''
-  });
+  const [isPolling, setIsPolling] = useState(false);
 
-  const handleProcessPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    // Load Viva Wallet Checkout script
+    const scriptId = 'viva-checkout-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://www.vivapayments.com/web/checkout/js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isPolling) {
+      interval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/viva/verify-payment?orderCode=${orderCode}&companyId=${companyId}&planId=${planId}`);
+          const result = await response.json();
+
+          if (result.success) {
+            setIsPolling(false);
+            onSuccess(orderCode); // Pass orderCode as transactionId for now
+          }
+        } catch (err) {
+          console.error("Erro ao verificar pagamento:", err);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPolling, orderCode, companyId, planId, onSuccess]);
+
+  const handleOpenCheckout = () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/viva/process-native', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderCode,
-          companyId,
-          planId,
-          card: {
-            number: cardData.number.replace(/\s/g, ''),
-            expirationMonth: parseInt(cardData.expirationMonth),
-            expirationYear: parseInt(cardData.expirationYear),
-            cvv: cardData.cvv,
-            holderName: cardData.holderName
+      if (typeof window.VivaCheckout !== 'undefined') {
+        window.VivaCheckout.setup({
+          ref: orderCode,
+          onResult: function(response: any) {
+            // This callback might not always fire depending on the payment method,
+            // so we still rely on polling as a fallback/primary verification method.
+            console.log("VivaCheckout result:", response);
           }
-        })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.details || result.message || 'Erro ao processar pagamento');
-      }
-
-      if (result.success) {
-        onSuccess(result.transactionId);
+        }).request();
+        
+        // Start polling for payment success while the modal is open
+        setIsPolling(true);
       } else {
-        throw new Error(result.message || 'Pagamento não autorizado');
+        // Fallback if script fails to load
+        const checkoutUrl = `https://www.vivapayments.com/web/checkout?ref=${orderCode}`;
+        window.location.href = checkoutUrl;
       }
     } catch (err: any) {
-      const errorMessage = err.message === 'Failed to fetch'
-        ? 'Erro de conexão com o servidor. O serviço de pagamentos pode estar temporariamente indisponível.'
-        : err.message;
-      setError(errorMessage);
+      setError(err.message || "Erro ao abrir a página de pagamento.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-
-    if (parts.length > 0) {
-      return parts.join(' ');
-    } else {
-      return value;
     }
   };
 
@@ -110,121 +115,71 @@ export default function VivaPaymentForm({
         <p className="text-[10px] text-gray-400 mt-1">Referência: {orderCode}</p>
       </div>
 
-      <form onSubmit={handleProcessPayment} className="space-y-4">
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Nome no Cartão</label>
-          <input 
-            type="text" 
-            required
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
-            placeholder="NOME COMO NO CARTÃO"
-            value={cardData.holderName}
-            onChange={e => setCardData({...cardData, holderName: e.target.value.toUpperCase()})}
-          />
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm flex items-start gap-3 border border-red-100">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+          <p>{error}</p>
         </div>
+      )}
 
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Número do Cartão</label>
-          <div className="relative">
-            <input 
-              type="text" 
-              required
-              maxLength={19}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10"
-              placeholder="0000 0000 0000 0000"
-              value={cardData.number}
-              onChange={e => setCardData({...cardData, number: formatCardNumber(e.target.value)})}
-            />
-            <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+      {isPolling ? (
+        <div className="space-y-6 text-center py-4">
+          <div className="w-16 h-16 bg-sidebar/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="w-8 h-8 text-sidebar animate-spin" />
           </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-1">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Mês</label>
-            <input 
-              type="text" 
-              required
-              maxLength={2}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10 text-center"
-              placeholder="MM"
-              value={cardData.expirationMonth}
-              onChange={e => setCardData({...cardData, expirationMonth: e.target.value.replace(/\D/g, '')})}
-            />
+          <div>
+            <h4 className="font-bold text-lg mb-2">A aguardar pagamento...</h4>
+            <p className="text-sm text-gray-500">
+              Conclua o pagamento na janela segura que foi aberta. 
+              Esta página será atualizada automaticamente assim que o pagamento for confirmado.
+            </p>
           </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Ano</label>
-            <input 
-              type="text" 
-              required
-              maxLength={4}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10 text-center"
-              placeholder="AAAA"
-              value={cardData.expirationYear}
-              onChange={e => setCardData({...cardData, expirationYear: e.target.value.replace(/\D/g, '')})}
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">CVV</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                required
-                maxLength={4}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-sidebar/10 text-center"
-                placeholder="123"
-                value={cardData.cvv}
-                onChange={e => setCardData({...cardData, cvv: e.target.value.replace(/\D/g, '')})}
-              />
-              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2 text-red-600 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <p>{error}</p>
-          </div>
-        )}
-
-        <div className="pt-4 flex flex-col gap-3">
           <button 
-            type="submit"
+            type="button"
+            onClick={handleOpenCheckout}
+            className="text-sm text-sidebar font-bold hover:underline flex items-center justify-center gap-2 mx-auto"
+          >
+            <CreditCard className="w-4 h-4" />
+            Reabrir janela de pagamento
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-blue-50 text-blue-700 p-4 rounded-2xl text-sm flex items-start gap-3 border border-blue-100">
+            <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+            <p>
+              O pagamento será processado de forma segura numa janela integrada da Viva Wallet.
+            </p>
+          </div>
+
+          <button 
+            type="button"
+            onClick={handleOpenCheckout}
             disabled={loading}
-            className="w-full bg-sidebar text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20 disabled:opacity-50"
+            className="w-full bg-sidebar text-white py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-sidebar/20 disabled:opacity-50"
           >
             {loading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Processando...
-              </>
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
-                Pagar Agora
-                <CheckCircle2 className="w-5 h-5" />
+                <Lock className="w-5 h-5" />
+                Pagar com Viva Wallet
               </>
             )}
           </button>
-          
-          {onCancel && (
-            <button 
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              className="w-full py-3 text-gray-400 text-xs font-bold hover:text-gray-600 transition-colors"
-            >
-              Cancelar e Voltar
-            </button>
-          )}
         </div>
-      </form>
+      )}
 
-      <div className="mt-6 flex items-center justify-center gap-4 opacity-30 grayscale">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-4" />
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6" />
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-4" />
-      </div>
+      {onCancel && (
+        <button 
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          className="w-full mt-4 py-4 rounded-2xl font-bold text-xs text-gray-400 uppercase tracking-widest hover:bg-gray-50 transition-all disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+      )}
     </div>
   );
 }

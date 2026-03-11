@@ -172,3 +172,49 @@ export const checkDocumentExpirations = (
     });
   });
 };
+
+export const checkMaintenanceAlerts = (
+  vehicles: Vehicle[],
+  addNotification: (n: AppNotification) => void,
+  existingNotifications: AppNotification[]
+) => {
+  const today = new Date();
+  
+  const isAlreadyNotified = (title: string, message: string) => {
+    return existingNotifications.some(n => n.title === title && n.message === message);
+  };
+
+  vehicles.forEach(vehicle => {
+    if (vehicle.current_km && vehicle.next_maintenance_km) {
+      const kmRemaining = vehicle.next_maintenance_km - vehicle.current_km;
+
+      if (kmRemaining <= 1000 && kmRemaining > 0) {
+        const title = `Manutenção Próxima: ${vehicle.plate}`;
+        const message = `O veículo ${vehicle.plate} está a ${kmRemaining}km da próxima manutenção programada (${vehicle.next_maintenance_km}km).`;
+
+        if (!isAlreadyNotified(title, message)) {
+          addNotification({
+            id: `maintenance-near-${vehicle.id}-${Date.now()}`,
+            title,
+            message,
+            date: today.toISOString().split('T')[0],
+            read: false
+          });
+        }
+      } else if (kmRemaining <= 0) {
+        const title = `Manutenção Vencida: ${vehicle.plate}`;
+        const message = `O veículo ${vehicle.plate} ULTRAPASSOU a quilometragem de manutenção (${vehicle.next_maintenance_km}km). Quilometragem atual: ${vehicle.current_km}km.`;
+
+        if (!isAlreadyNotified(title, message)) {
+          addNotification({
+            id: `maintenance-overdue-${vehicle.id}-${Date.now()}`,
+            title,
+            message,
+            date: today.toISOString().split('T')[0],
+            read: false
+          });
+        }
+      }
+    }
+  });
+};
