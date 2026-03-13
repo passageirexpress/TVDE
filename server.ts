@@ -562,6 +562,70 @@ async function startServer() {
     }
   });
 
+  app.get("/api/contracts/download/:contractId", async (req, res) => {
+    const { contractId } = req.params;
+
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase Admin not configured" });
+
+    try {
+      const { data: contract } = await supabaseAdmin
+        .from('contracts')
+        .select('*, drivers(*)')
+        .eq('id', contractId)
+        .single();
+
+      if (!contract) {
+        return res.status(404).json({ error: "Contrato não encontrado" });
+      }
+
+      const doc = new PDFDocument({ margin: 50 });
+      const buffers: Buffer[] = [];
+      
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => res.send(Buffer.concat(buffers)));
+      doc.on('error', (err) => { throw err; });
+
+      // Header
+      doc.fontSize(20).text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS', { align: 'center' });
+      doc.moveDown();
+
+      // Content
+      doc.fontSize(12).font('Helvetica-Bold').text('ENTRE:');
+      doc.font('Helvetica').text('PASSAGEIRO EXPRESS UNIPESSOA LDA, NIF 517400000, com sede em Lisboa.');
+      doc.moveDown();
+
+      doc.font('Helvetica-Bold').text('E:');
+      doc.font('Helvetica').text(`${contract.drivers.full_name}, NIF ${contract.drivers.nif}, residente em Portugal.`);
+      doc.moveDown();
+
+      doc.font('Helvetica-Bold').text('CLÁUSULA PRIMEIRA - OBJETO');
+      doc.font('Helvetica').text(`O presente contrato tem por objeto a prestação de serviços de motorista TVDE pelo SEGUNDO OUTORGANTE ao PRIMEIRO OUTORGANTE.`);
+      doc.moveDown();
+
+      doc.font('Helvetica-Bold').text('CLÁUSULA SEGUNDA - TIPO DE CONTRATO');
+      doc.font('Helvetica').text(`Tipo: ${contract.type === 'tvde_contract' ? 'Contrato TVDE' : 'Acordo de Aluguer'}`);
+      doc.moveDown();
+
+      doc.font('Helvetica-Bold').text('CLÁUSULA TERCEIRA - ESTADO');
+      doc.font('Helvetica').text(`Estado atual: ${contract.status}`);
+      if (contract.signed_at) {
+        doc.text(`Assinado em: ${new Date(contract.signed_at).toLocaleDateString('pt-PT')}`);
+      }
+      doc.moveDown(2);
+
+      doc.text('__________________________________________', { align: 'center' });
+      doc.text('Assinatura do Motorista', { align: 'center' });
+
+      doc.end();
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Contrato_${contract.drivers.full_name.replace(/\s+/g, '_')}.pdf`);
+    } catch (error: any) {
+      console.error("Download Contract Error:", error);
+      res.status(500).json({ error: "Erro ao gerar contrato" });
+    }
+  });
+
   app.post("/api/viva/process-native", async (req, res) => {
     const { orderCode, card, companyId, planId } = req.body;
 

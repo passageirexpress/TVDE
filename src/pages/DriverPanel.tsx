@@ -16,6 +16,7 @@ import {
   Upload,
   Building2,
   CheckCircle2,
+  Loader2,
   Receipt,
   AlertCircle,
   X,
@@ -89,7 +90,9 @@ export default function DriverPanel() {
   const [showNotification, setShowNotification] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [newExpense, setNewExpense] = useState({
     category: 'fuel',
     amount: '',
@@ -156,6 +159,23 @@ export default function DriverPanel() {
     setShowNotification(true);
     if (audioRef.current) {
       audioRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleUploadReceipt = async (paymentId: string, file: File) => {
+    setIsUploadingReceipt(true);
+    try {
+      // Mock upload for now, in production use Supabase Storage
+      const mockUrl = `https://storage.example.com/receipts/${paymentId}_${file.name}`;
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      useDataStore.getState().updatePayment(paymentId, { receipt_url: mockUrl });
+      setShowReceiptModal(null);
+      toast.success('Recibo verde submetido com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao submeter recibo');
+    } finally {
+      setIsUploadingReceipt(false);
     }
   };
 
@@ -574,9 +594,28 @@ export default function DriverPanel() {
                         <p className="text-lg font-black text-gray-900">{formatCurrency(item.net_amount)}</p>
                         <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Líquido a Receber</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-gray-500">{formatCurrency(item.gross_revenue)}</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Total Bruto</p>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-gray-500">{formatCurrency(item.gross_revenue)}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Total Bruto</p>
+                        </div>
+                        {item.status === 'paid' && !item.receipt_url && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowReceiptModal(item.id);
+                            }}
+                            className="text-[10px] font-black text-sidebar hover:underline uppercase tracking-widest"
+                          >
+                            Submeter Recibo Verde
+                          </button>
+                        )}
+                        {item.receipt_url && (
+                          <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Recibo Submetido
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -585,6 +624,64 @@ export default function DriverPanel() {
             </div>
           </div>
         </>
+      )}
+
+      {showReceiptModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold">Submeter Recibo Verde</h2>
+              <button onClick={() => setShowReceiptModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="bg-blue-50 p-4 rounded-2xl flex gap-3">
+                <Info className="w-5 h-5 text-blue-600 shrink-0" />
+                <p className="text-xs text-blue-700 leading-relaxed">
+                  Por favor, submeta o recibo verde correspondente ao pagamento selecionado. O arquivo deve estar em formato PDF ou Imagem.
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Arquivo do Recibo</label>
+                <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-sidebar/50 hover:bg-gray-50 transition-all cursor-pointer relative group">
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && showReceiptModal) {
+                        handleUploadReceipt(showReceiptModal, file);
+                      }
+                    }}
+                    accept=".pdf,image/*"
+                    disabled={isUploadingReceipt}
+                  />
+                  {isUploadingReceipt ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 text-sidebar animate-spin" />
+                      <p className="text-sm font-bold text-gray-600">Enviando recibo...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="w-10 h-10 text-gray-300 group-hover:text-sidebar transition-colors" />
+                      <p className="text-sm font-bold text-gray-700">Clique ou arraste o arquivo</p>
+                      <p className="text-xs text-gray-400">PDF, JPG ou PNG (Máx. 5MB)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowReceiptModal(null)}
+                className="w-full py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab === 'services' && (

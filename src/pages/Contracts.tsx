@@ -12,7 +12,9 @@ import {
   MoreVertical,
   Car,
   Zap,
-  Trash2
+  Trash2,
+  X,
+  Edit2
 } from 'lucide-react';
 import { useDataStore } from '../store/useDataStore';
 import { Driver, Contract } from '../types';
@@ -23,6 +25,8 @@ export default function Contracts() {
   const { drivers, contracts, addContract, updateContract, deleteContract } = useDataStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'tvde' | 'uber' | 'bolt'>('all');
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const filteredDrivers = drivers.filter(driver => {
     const matchesSearch = driver.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -30,13 +34,13 @@ export default function Contracts() {
     return matchesSearch;
   });
 
+  const getContract = (driverId: string, type: string) => {
+    return contracts.find(c => c.driver_id === driverId && c.type === type);
+  };
+
   const getContractStatus = (driverId: string, type: string) => {
-    // This is a simplified logic. In a real app, you'd have more specific fields or a separate table for platform associations.
-    // For now, we'll use the existing contracts table and some mock logic for Uber/Bolt if not present.
-    const contract = contracts.find(c => c.driver_id === driverId && c.type === type);
+    const contract = getContract(driverId, type);
     if (contract) return contract.status;
-    
-    // Mocking some statuses for the UI if no real contract exists yet
     return 'none';
   };
 
@@ -48,8 +52,45 @@ export default function Contracts() {
     draft: { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50', label: 'Rascunho' },
   };
 
-  const handleAction = (driverName: string, action: string) => {
-    toast.success(`${action} para ${driverName} concluído com sucesso!`);
+  const handleDownload = (driverId: string, type: string) => {
+    const contract = getContract(driverId, type);
+    if (contract) {
+      window.open(`/api/contracts/download/${contract.id}`, '_blank');
+      toast.success('Download iniciado!');
+    } else {
+      toast.error('Contrato não encontrado para este motorista.');
+    }
+  };
+
+  const handleEdit = (driverId: string, type: string) => {
+    const contract = getContract(driverId, type);
+    if (contract) {
+      setEditingContract(contract);
+      setShowEditModal(true);
+    } else {
+      // Create a draft contract if it doesn't exist
+      const newContract: Contract = {
+        id: crypto.randomUUID(),
+        company_id: drivers.find(d => d.id === driverId)?.company_id || '',
+        driver_id: driverId,
+        type: type as any,
+        status: 'draft',
+        document_url: ''
+      };
+      addContract(newContract);
+      setEditingContract(newContract);
+      setShowEditModal(true);
+    }
+  };
+
+  const handleUpdateContract = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingContract) {
+      updateContract(editingContract.id, editingContract);
+      setShowEditModal(false);
+      setEditingContract(null);
+      toast.success('Contrato atualizado com sucesso!');
+    }
   };
 
   const handleDelete = (driverId: string) => {
@@ -166,27 +207,44 @@ export default function Contracts() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={tvdeStatus as any} config={statusConfig} />
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={tvdeStatus as any} config={statusConfig} />
+                        <button 
+                          onClick={() => handleEdit(driver.id, 'tvde_contract')}
+                          className="p-1 text-gray-400 hover:text-sidebar opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={uberStatus} config={statusConfig} />
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={uberStatus} config={statusConfig} />
+                        <button 
+                          onClick={() => handleEdit(driver.id, 'uber_association')}
+                          className="p-1 text-gray-400 hover:text-sidebar opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={boltStatus} config={statusConfig} />
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={boltStatus} config={statusConfig} />
+                        <button 
+                          onClick={() => handleEdit(driver.id, 'bolt_association')}
+                          className="p-1 text-gray-400 hover:text-sidebar opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          onClick={() => handleAction(driver.full_name, 'Envio de contrato')}
+                          onClick={() => handleDownload(driver.id, 'tvde_contract')}
                           className="p-2 text-gray-400 hover:text-sidebar hover:bg-sidebar/5 rounded-lg transition-all"
-                          title="Enviar Contrato"
-                        >
-                          <FileText className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleAction(driver.full_name, 'Download de PDF')}
-                          className="p-2 text-gray-400 hover:text-sidebar hover:bg-sidebar/5 rounded-lg transition-all"
-                          title="Download PDF"
+                          title="Download PDF Contrato TVDE"
                         >
                           <Download className="w-5 h-5" />
                         </button>
@@ -209,6 +267,66 @@ export default function Contracts() {
           </table>
         </div>
       </div>
+
+      {showEditModal && editingContract && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold">Editar Contrato</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateContract} className="p-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tipo de Contrato</label>
+                <div className="p-3 bg-gray-50 rounded-xl font-bold text-gray-700">
+                  {editingContract.type === 'tvde_contract' ? 'Contrato TVDE' : 'Acordo de Aluguer'}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Estado</label>
+                <select 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-bold"
+                  value={editingContract.status}
+                  onChange={(e) => setEditingContract({...editingContract, status: e.target.value as any})}
+                >
+                  <option value="draft">Rascunho</option>
+                  <option value="sent">Enviado</option>
+                  <option value="signed">Assinado</option>
+                  <option value="expired">Expirado</option>
+                </select>
+              </div>
+              {editingContract.status === 'signed' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Data de Assinatura</label>
+                  <input 
+                    type="date"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-sidebar/10 font-bold"
+                    value={editingContract.signed_at?.split('T')[0] || ''}
+                    onChange={(e) => setEditingContract({...editingContract, signed_at: e.target.value})}
+                  />
+                </div>
+              )}
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-4 bg-sidebar text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-sidebar/20"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

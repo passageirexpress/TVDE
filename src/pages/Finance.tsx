@@ -72,6 +72,8 @@ export default function Finance() {
   const [isSyncingUber, setIsSyncingUber] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [isSendingInvoice, setIsSendingInvoice] = useState(false);
+  const [showReceiptUploadModal, setShowReceiptUploadModal] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   const chartData = useMemo(() => {
     const sixMonthsAgo = new Date();
@@ -847,6 +849,147 @@ export default function Finance() {
         </div>
       </div>
 
+      <div className="flex gap-4 border-b border-gray-100 pb-px overflow-x-auto scrollbar-hide mb-8">
+        <button 
+          onClick={() => setActiveTab('overview')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap",
+            activeTab === 'overview' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
+        >
+          Visão Geral
+          {activeTab === 'overview' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('pending')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap",
+            activeTab === 'pending' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
+        >
+          Pagamentos Pendentes
+          {activeTab === 'pending' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('history')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap",
+            activeTab === 'history' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
+        >
+          Histórico
+          {activeTab === 'history' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('documents')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap",
+            activeTab === 'documents' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
+        >
+          Faturas & Recibos
+          {activeTab === 'documents' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
+        </button>
+        <button 
+          onClick={() => setActiveTab('settlement')}
+          className={cn(
+            "px-6 py-3 text-sm font-black uppercase tracking-widest transition-all relative whitespace-nowrap",
+            activeTab === 'settlement' ? "text-sidebar" : "text-gray-400 hover:text-gray-600"
+          )}
+        >
+          Acerto de Contas
+          {activeTab === 'settlement' && <div className="absolute bottom-0 left-0 w-full h-1 bg-sidebar rounded-t-full" />}
+        </button>
+      </div>
+
+      {activeTab === 'documents' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Platform Invoices */}
+            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black tracking-tighter uppercase">Faturas da Plataforma</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Faturas de subscrição do sistema</p>
+                </div>
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                  <Zap className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="p-8">
+                <div className="space-y-4">
+                  {companies.filter(c => c.id === user?.company_id).map(company => (
+                    <div key={company.id} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-sidebar/20 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white rounded-xl shadow-sm">
+                          <FileUp className="w-5 h-5 text-sidebar" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">Assinatura {company.plan.toUpperCase()}</p>
+                          <p className="text-xs text-gray-400">Status: {company.subscription_status} • {company.nif}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => window.open(`/api/invoices/download/${company.id}`, '_blank')}
+                        className="p-3 bg-white text-gray-400 hover:text-sidebar rounded-xl shadow-sm hover:shadow-md transition-all"
+                      >
+                        <Download className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Driver Receipts */}
+            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black tracking-tighter uppercase">Recibos Verdes (Motoristas)</h3>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recibos submetidos pelos motoristas</p>
+                </div>
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="p-8">
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {payments.filter(p => p.receipt_url).map(payment => {
+                    const driver = drivers.find(d => d.id === payment.driver_id);
+                    return (
+                      <div key={payment.id} className="flex items-center justify-between p-5 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-sidebar/20 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-white rounded-xl shadow-sm">
+                            <UserIcon className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900">{driver?.full_name || 'Motorista'}</p>
+                            <p className="text-xs text-gray-400">{payment.period_start} - {payment.period_end} • {formatCurrency(payment.net_amount)}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => window.open(payment.receipt_url, '_blank')}
+                          className="p-3 bg-white text-gray-400 hover:text-sidebar rounded-xl shadow-sm hover:shadow-md transition-all"
+                        >
+                          <Download className="w-5 h-5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {payments.filter(p => p.receipt_url).length === 0 && (
+                    <div className="text-center py-12">
+                      <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                      <p className="text-gray-400 font-medium">Nenhum recibo verde submetido.</p>
+                      <p className="text-xs text-gray-300 mt-1">Os recibos aparecerão aqui quando os motoristas os submeterem.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'settlement' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
           <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm">
@@ -1097,52 +1240,14 @@ export default function Finance() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
-          <button 
-            onClick={() => setActiveTab('overview')}
-            className={cn(
-              "px-6 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
-              activeTab === 'overview' ? "border-sidebar text-sidebar" : "border-transparent text-gray-400 hover:text-gray-600"
-            )}
-          >
-            Visão Geral
-          </button>
-          <button 
-            onClick={() => setActiveTab('pending')}
-            className={cn(
-              "px-6 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
-              activeTab === 'pending' ? "border-sidebar text-sidebar" : "border-transparent text-gray-400 hover:text-gray-600"
-            )}
-          >
-            Pagamentos Pendentes
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={cn(
-              "px-6 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
-              activeTab === 'history' ? "border-sidebar text-sidebar" : "border-transparent text-gray-400 hover:text-gray-600"
-            )}
-          >
-            Histórico
-          </button>
-          <button 
-            onClick={() => setActiveTab('settlement')}
-            className={cn(
-              "px-6 sm:px-8 py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
-              activeTab === 'settlement' ? "border-sidebar text-sidebar" : "border-transparent text-gray-400 hover:text-gray-600"
-            )}
-          >
-            Fecho de Contas
-          </button>
-        </div>
-
-        <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {(activeTab === 'pending' || activeTab === 'history') && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+          <div className="p-4 sm:p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
             <div className="flex items-center gap-2 mr-4">
               <History className="w-5 h-5 text-sidebar" />
               <h3 className="font-bold text-gray-900 whitespace-nowrap">
-                {activeTab === 'overview' ? 'Visão Geral' : activeTab === 'pending' ? 'Pagamentos Pendentes' : activeTab === 'history' ? 'Histórico de Pagamentos' : 'Fecho de Contas'}
+                {activeTab === 'pending' ? 'Pagamentos Pendentes' : 'Histórico de Pagamentos'}
               </h3>
             </div>
             <div className="relative flex-1 max-w-md">
@@ -1312,6 +1417,7 @@ export default function Finance() {
           </table>
         </div>
       </div>
+      )}
       {showDetailsModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
